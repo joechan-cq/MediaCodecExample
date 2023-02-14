@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <Button
+            android:id="@+id/btn_list_all_decoders"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="列举所有解码器" />
+
+        <Button
+            android:id="@+id/btn_list_all_encoders"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="列举所有编码器" />
+
+        <Button
+            android:id="@+id/btn_decode_play"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="解码播放视频" />
+
+        <Button
+            android:id="@+id/btn_transcode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="转码压缩视频" />
+    </LinearLayout>
+
+</FrameLayout>
