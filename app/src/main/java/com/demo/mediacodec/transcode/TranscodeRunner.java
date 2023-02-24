@@ -165,7 +165,6 @@ public class TranscodeRunner {
 
         if (mDecoder != null) {
             try {
-                mDecoder.stop();
                 mDecoder.release();
             } catch (Exception e) {
                 Log.w("TranscodeRunner", "reset: ", e);
@@ -281,7 +280,7 @@ public class TranscodeRunner {
             }
         }
 
-        //TODO 这里需要注意，部分设备硬件编码器是无法保留HDR的，因此可能需要改成软件编码器才行
+        //TODO 这里需要注意，部分设备硬件编码器是无法保留HDR的（但屏幕本身支持HDR视频显示），因此可能需要改成软件编码器才行
         String codecName = MediaCodecUtils.findEncoderByFormat(mOutputFormat, false);
         if (TextUtils.isEmpty(codecName)) {
             throw new RuntimeException("没有找到合适的编码器! outputFormat:" + mOutputFormat);
@@ -291,6 +290,7 @@ public class TranscodeRunner {
         mEncodeCodecHandler = new Handler(mEncodeCodecThread.getLooper());
 
         mEncoder = MediaCodec.createByCodecName(codecName);
+
         mEncoder.setCallback(new MediaCodec.Callback() {
             @Override
             public void onInputBufferAvailable(@NonNull MediaCodec codec, int index) {

@@ -21,7 +21,7 @@ public class DecodersInfoActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_decoders_info);
         decodersInfoTv = findViewById(R.id.tv_decoders_info);
-        MediaCodecList mediaCodecList = new MediaCodecList(MediaCodecList.REGULAR_CODECS);
+        MediaCodecList mediaCodecList = new MediaCodecList(MediaCodecList.ALL_CODECS);
         MediaCodecInfo[] codecInfos = mediaCodecList.getCodecInfos();
         StringBuilder s = new StringBuilder();
         for (MediaCodecInfo codecInfo : codecInfos) {

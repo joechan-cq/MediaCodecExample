@@ -23,7 +23,7 @@ public class EncodersInfoActivity extends BaseActivity {
         setContentView(R.layout.activity_encoders_info);
         encodersInfoTv = findViewById(R.id.tv_encoders_info);
 
-        MediaCodecList mediaCodecList = new MediaCodecList(MediaCodecList.REGULAR_CODECS);
+        MediaCodecList mediaCodecList = new MediaCodecList(MediaCodecList.ALL_CODECS);
         MediaCodecInfo[] codecInfos = mediaCodecList.getCodecInfos();
         StringBuilder s = new StringBuilder();
         for (MediaCodecInfo codecInfo : codecInfos) {
