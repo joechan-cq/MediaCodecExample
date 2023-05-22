@@ -47,6 +47,20 @@ public class EncodersInfoActivity extends BaseActivity {
                             Range<Integer> bitrateRange = vcaps.getBitrateRange();
                             s.append("bitrateRange: ").append(bitrateRange.getLower()).append("-").append(bitrateRange.getUpper()).append("\n");
                         }
+                        if (caps.colorFormats != null) {
+                            s.append("colorFormat:[\n");
+                            for (int colorFormat : caps.colorFormats) {
+                                s.append(colorFormat).append(" ");
+                            }
+                            s.append("\n]\n");
+                        }
+                        if (caps.profileLevels != null) {
+                            s.append("profileLevels:[\n");
+                            for (MediaCodecInfo.CodecProfileLevel profileLevel : caps.profileLevels) {
+                                s.append("\tprofile:").append(profileLevel.profile).append(" ").append("level:").append(profileLevel.level).append("\n");
+                            }
+                            s.append("\n]\n");
+                        }
                         MediaCodecInfo.EncoderCapabilities enCaps = caps.getEncoderCapabilities();
                         if (enCaps == null) {
                             continue;

@@ -34,7 +34,16 @@ public class DecodersInfoActivity extends BaseActivity {
                                 codecInfo.getCapabilitiesForType(type);
                         s.append("\t").append(type).append("：");
                         MediaFormat format = cap.getDefaultFormat();
-                        s.append(format);
+                        s.append(format).append("\n");
+
+                        if (cap.colorFormats != null) {
+                            s.append("colorFormat:[\n");
+                            for (int colorFormat : cap.colorFormats) {
+                                s.append(colorFormat).append(" ");
+                            }
+                            s.append("\n]\n");
+                        }
+
                         MediaCodecInfo.VideoCapabilities videoCap =
                                 cap.getVideoCapabilities();
                         if (videoCap != null) {
