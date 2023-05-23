@@ -37,6 +37,7 @@ public class EncodersInfoActivity extends BaseActivity {
                             continue;
                         }
                         MediaFormat defaultFormat = caps.getDefaultFormat();
+                        String mimeType = caps.getMimeType();
                         s.append("defaultFormat: ").append(defaultFormat).append("\n");
                         MediaCodecInfo.VideoCapabilities vcaps = caps.getVideoCapabilities();
                         if (vcaps != null) {
@@ -47,17 +48,28 @@ public class EncodersInfoActivity extends BaseActivity {
                             Range<Integer> bitrateRange = vcaps.getBitrateRange();
                             s.append("bitrateRange: ").append(bitrateRange.getLower()).append("-").append(bitrateRange.getUpper()).append("\n");
                         }
-                        if (caps.colorFormats != null) {
+                        if (caps.colorFormats != null && caps.colorFormats.length > 0) {
                             s.append("colorFormat:[\n");
+                            s.append("\t");
                             for (int colorFormat : caps.colorFormats) {
                                 s.append(colorFormat).append(" ");
                             }
                             s.append("\n]\n");
                         }
                         if (caps.profileLevels != null) {
-                            s.append("profileLevels:[\n");
+                            s.append("profileLevels:[");
                             for (MediaCodecInfo.CodecProfileLevel profileLevel : caps.profileLevels) {
-                                s.append("\tprofile:").append(profileLevel.profile).append(" ").append("level:").append(profileLevel.level).append("\n");
+                                s.append("\n");
+                                s.append("\tprofile:").append(profileLevel.profile).append(" ").append("level:").append(profileLevel.level);
+                                if ("video/avc".equalsIgnoreCase(mimeType)) {
+                                    if (profileLevel.profile >= MediaCodecInfo.CodecProfileLevel.AV1ProfileMain10) {
+                                        s.append("(HDR)");
+                                    }
+                                } else if ("video/hevc".equalsIgnoreCase(mimeType)) {
+                                    if (profileLevel.profile >= MediaCodecInfo.CodecProfileLevel.HEVCProfileMain10) {
+                                        s.append("(HDR)");
+                                    }
+                                }
                             }
                             s.append("\n]\n");
                         }

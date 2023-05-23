@@ -36,7 +36,7 @@ public class DecodersInfoActivity extends BaseActivity {
                         MediaFormat format = cap.getDefaultFormat();
                         s.append(format).append("\n");
 
-                        if (cap.colorFormats != null) {
+                        if (cap.colorFormats != null && cap.colorFormats.length > 0) {
                             s.append("colorFormat:[\n");
                             for (int colorFormat : cap.colorFormats) {
                                 s.append(colorFormat).append(" ");
