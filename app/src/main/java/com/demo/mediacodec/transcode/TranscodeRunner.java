@@ -242,13 +242,32 @@ public class TranscodeRunner {
      * 准备编码器
      */
     private void prepareEncoder() throws Exception {
+        boolean isDolby = false;
+        boolean isH265 = false;
         String mime;
         if (mConfig.h265) {
-            mime = "video/hevc";
+            isH265 = true;
+            if (MediaFormat.MIMETYPE_VIDEO_DOLBY_VISION.equals(mOriVideoMime)) {
+                //如果是杜比视界，那么需要检查能否使用杜比视界的mimeType
+                mime = MediaFormat.MIMETYPE_VIDEO_DOLBY_VISION;
+                isDolby = true;
+            } else {
+                mime = MediaFormat.MIMETYPE_VIDEO_HEVC;
+            }
         } else {
-            mime = "video/avc";
+            mime = MediaFormat.MIMETYPE_VIDEO_AVC;
         }
         mOutputFormat = MediaFormat.createVideoFormat(mime, mConfig.outWidth, mConfig.outHeight);
+        if (isDolby) {
+            String codecName = MediaCodecUtils.findEncoderByFormat(mOutputFormat, false);
+            if (codecName == null) {
+                //说明没有杜比视界的编码器，降级到Hevc去
+                mime = MediaFormat.MIMETYPE_VIDEO_HEVC;
+                mOutputFormat = MediaFormat.createVideoFormat(mime, mConfig.outWidth,
+                        mConfig.outHeight);
+                isDolby = false;
+            }
+        }
         mOutputFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT,
                 MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
         mOutputFormat.setInteger(MediaFormat.KEY_BITRATE_MODE,
@@ -264,19 +283,48 @@ public class TranscodeRunner {
             mOutputFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 25);
         }
         mOutputFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
-        if (Build.VERSION.SDK_INT > 23) {
+        if (Build.VERSION.SDK_INT > 23 && isH265) {
+            //不去生成H264的HDR视频
             //设置Color相关参数，使其尽量保证HDR视频转码后仍然是HDR视频
+            int colorTransfer = 0;
             if (mOriVideoFormat.containsKey(MediaFormat.KEY_COLOR_STANDARD)) {
                 mOutputFormat.setInteger(MediaFormat.KEY_COLOR_STANDARD,
                         mOriVideoFormat.getInteger(MediaFormat.KEY_COLOR_STANDARD));
             }
             if (mOriVideoFormat.containsKey(MediaFormat.KEY_COLOR_TRANSFER)) {
-                mOutputFormat.setInteger(MediaFormat.KEY_COLOR_TRANSFER,
-                        mOriVideoFormat.getInteger(MediaFormat.KEY_COLOR_TRANSFER));
+                colorTransfer = mOriVideoFormat.getInteger(MediaFormat.KEY_COLOR_TRANSFER);
+                mOutputFormat.setInteger(MediaFormat.KEY_COLOR_TRANSFER, colorTransfer);
             }
             if (mOriVideoFormat.containsKey(MediaFormat.KEY_COLOR_RANGE)) {
                 mOutputFormat.setInteger(MediaFormat.KEY_COLOR_RANGE,
                         mOriVideoFormat.getInteger(MediaFormat.KEY_COLOR_RANGE));
+            }
+            if (mOriVideoFormat.containsKey(MediaFormat.KEY_HDR_STATIC_INFO)) {
+                mOutputFormat.setByteBuffer(MediaFormat.KEY_HDR_STATIC_INFO,
+                        mOriVideoFormat.getByteBuffer(MediaFormat.KEY_HDR_STATIC_INFO));
+            }
+            mOutputFormat.setFeatureEnabled("hdr-editing", true);
+            if (isDolby) {
+                //如果是杜比
+                mOutputFormat.setInteger(MediaFormat.KEY_PROFILE,
+                        MediaCodecInfo.CodecProfileLevel.DolbyVisionProfileDvheSt);
+            } else {
+                switch (colorTransfer) {
+                    case MediaFormat.COLOR_TRANSFER_HLG:
+                        //HLG（HGL10）
+                        mOutputFormat.setInteger(MediaFormat.KEY_PROFILE,
+                                MediaCodecInfo.CodecProfileLevel.HEVCProfileMain10);
+                        break;
+                    case MediaFormat.COLOR_TRANSFER_ST2084:
+                        //PQ（HDR10和HDR10+）
+                        //TODO 怎么区分HDR10和HDR10+ HEVCProfileMain10HDR10Plus
+                        mOutputFormat.setInteger(MediaFormat.KEY_PROFILE,
+                                MediaCodecInfo.CodecProfileLevel.HEVCProfileMain10HDR10);
+                        //TODO 可能还是要降级成HEVCProfileMain10
+                        break;
+                    default:
+                        break;
+                }
             }
         }
 
@@ -381,7 +429,8 @@ public class TranscodeRunner {
                     codec.releaseOutputBuffer(index, render);
                     if (render) {
                         // 切换GL线程
-                        // 为什么不用mDecoderOutputSurface.makeCurrent() ?因为OutputSurface内部没有创建EGLContext等参数
+                        // 为什么不用mDecoderOutputSurface.makeCurrent()
+                        // ?因为OutputSurface内部没有创建EGLContext等参数
                         mEncoderInputSurface.makeCurrent();
                         //往OutputSurface上绘制图像
                         mDecoderOutputSurface.awaitNewImage();
