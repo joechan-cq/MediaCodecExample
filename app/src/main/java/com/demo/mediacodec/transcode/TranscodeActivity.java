@@ -86,6 +86,7 @@ public class TranscodeActivity extends BaseActivity implements TranscodeRunner.O
             config.h265 = mH265Cb.isChecked();
             config.outWidth = Integer.parseInt(mDstWidthEdt.getEditableText().toString());
             config.outHeight = Integer.parseInt(mDstHeightEdt.getEditableText().toString());
+            config.bitrate = Integer.parseInt(mDstBitrateEdt.getEditableText().toString());
             try {
                 if (config.dstPath.exists()) {
                     config.dstPath.delete();
