@@ -303,12 +303,17 @@ public class TranscodeRunner {
                 mOutputFormat.setByteBuffer(MediaFormat.KEY_HDR_STATIC_INFO,
                         mOriVideoFormat.getByteBuffer(MediaFormat.KEY_HDR_STATIC_INFO));
             }
-            mOutputFormat.setFeatureEnabled("hdr-editing", true);
             if (isDolby) {
                 //如果是杜比
-                mOutputFormat.setInteger(MediaFormat.KEY_PROFILE,
-                        MediaCodecInfo.CodecProfileLevel.DolbyVisionProfileDvheSt);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                    mOutputFormat.setInteger(MediaFormat.KEY_PROFILE,
+                            MediaCodecInfo.CodecProfileLevel.DolbyVisionProfileDvheSt);
+                } else {
+                    mOutputFormat.setInteger(MediaFormat.KEY_PROFILE,
+                            MediaCodecInfo.CodecProfileLevel.DolbyVisionProfileDvheStn);
+                }
             } else {
+                mOutputFormat.setFeatureEnabled("hdr-editing", true);
                 switch (colorTransfer) {
                     case MediaFormat.COLOR_TRANSFER_HLG:
                         //HLG（HGL10）

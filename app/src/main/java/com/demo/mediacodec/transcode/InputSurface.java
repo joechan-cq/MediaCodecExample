@@ -61,10 +61,12 @@ public class InputSurface {
         // to minimize artifacts from possible YUV conversion.
         int[] attribList = {
                 EGL14.EGL_RED_SIZE, 8,
-                EGL14.EGL_GREEN_SIZE, 8,
-                EGL14.EGL_BLUE_SIZE, 8,
-                EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
-                EGLExt.EGL_RECORDABLE_ANDROID, 1,
+                EGL14.EGL_RED_SIZE, 10,
+                EGL14.EGL_GREEN_SIZE, 10,
+                EGL14.EGL_BLUE_SIZE, 10,
+                EGL14.EGL_ALPHA_SIZE, 2,
+                EGL14.EGL_RENDERABLE_TYPE, EGLExt.EGL_OPENGL_ES3_BIT_KHR,
+//                EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
                 EGL14.EGL_NONE
         };
         int[] numConfigs = new int[1];
@@ -101,6 +103,13 @@ public class InputSurface {
             mHeight = getHeight();
         }
     }
+
+//    private int EGL_GL_COLORSPACE_KHR               = 0x309D;
+//    private int EGL_GL_COLORSPACE_BT2020_LINEAR_EXT = 0x333F;
+//    private int EGL_GL_COLORSPACE_BT2020_PQ_EXT     = 0x3340;
+//    private int EGL_GL_COLORSPACE_DISPLAY_P3_LINEAR_EXT = 0x3362;
+//    private int EGL_GL_COLORSPACE_DISPLAY_P3_EXT    = 0x3363;
+//    private int EGL_GL_COLORSPACE_DISPLAY_P3_PASSTHROUGH_EXT = 0x3490;
 
     private void createEGLSurface() {
         //EGLConfig[] configs = new EGLConfig[1];
