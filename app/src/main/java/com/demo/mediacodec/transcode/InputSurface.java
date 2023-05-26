@@ -61,11 +61,10 @@ public class InputSurface {
         // to minimize artifacts from possible YUV conversion.
         int[] attribList = {
                 EGL14.EGL_RED_SIZE, 8,
-                EGL14.EGL_RED_SIZE, 10,
-                EGL14.EGL_GREEN_SIZE, 10,
-                EGL14.EGL_BLUE_SIZE, 10,
-                EGL14.EGL_ALPHA_SIZE, 2,
-                EGL14.EGL_RENDERABLE_TYPE, EGLExt.EGL_OPENGL_ES3_BIT_KHR,
+                EGL14.EGL_GREEN_SIZE, 8,
+                EGL14.EGL_BLUE_SIZE, 8,
+//                EGL14.EGL_ALPHA_SIZE, 8,
+//                EGL14.EGL_RENDERABLE_TYPE, EGLExt.EGL_OPENGL_ES3_BIT_KHR,
 //                EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
                 EGL14.EGL_NONE
         };
