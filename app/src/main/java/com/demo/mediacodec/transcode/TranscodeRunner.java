@@ -470,6 +470,9 @@ public class TranscodeRunner {
             }
         }, mDecodeCodecHandler);
         mDecoderOutputSurface = new OutputSurface();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            mOriVideoFormat.setInteger("allow-frame-drop", 0);
+        }
         mDecoder.configure(mOriVideoFormat, mDecoderOutputSurface.getSurface(), null, 0);
     }
 
