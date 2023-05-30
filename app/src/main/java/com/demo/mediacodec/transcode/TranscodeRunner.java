@@ -272,6 +272,7 @@ public class TranscodeRunner {
                 MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
         mOutputFormat.setInteger(MediaFormat.KEY_BITRATE_MODE,
                 MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR);
+
         if (mConfig.bitrate > 0) {
             mOutputFormat.setInteger(MediaFormat.KEY_BIT_RATE, mConfig.bitrate);
         } else {
@@ -430,7 +431,7 @@ public class TranscodeRunner {
             public void onOutputBufferAvailable(@NonNull MediaCodec codec, int index,
                                                 @NonNull MediaCodec.BufferInfo info) {
                 if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0 && (info.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0) {
-                    boolean render = info.size != 0;
+                    boolean render = info.size > 0;
                     codec.releaseOutputBuffer(index, render);
                     if (render) {
                         // 切换GL线程
@@ -449,7 +450,9 @@ public class TranscodeRunner {
                 } else {
                     codec.releaseOutputBuffer(index, false);
                     if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                        mEncoder.signalEndOfInputStream();
+                        if (mEncoder != null) {
+                            mEncoder.signalEndOfInputStream();
+                        }
                         codec.stop();
                         codec.release();
                         Log.i("Decoder", "解码已经完成");
@@ -484,7 +487,9 @@ public class TranscodeRunner {
     }
 
     private void _start() {
-        mEncoder.start();
+        if (mEncoder != null) {
+            mEncoder.start();
+        }
         mDecoder.start();
     }
 
