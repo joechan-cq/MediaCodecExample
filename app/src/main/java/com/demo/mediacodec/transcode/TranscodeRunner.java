@@ -3,7 +3,6 @@ package com.demo.mediacodec.transcode;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.media.MediaCodec;
-import android.media.MediaCodecInfo;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
@@ -138,8 +137,9 @@ public class TranscodeRunner {
                     return;
                 }
                 try {
-                    prepareEncoder();
-                    prepareDecoder();
+                    VideoOutputConfig outputConfig = new VideoOutputConfig();
+                    prepareEncoder(outputConfig);
+                    prepareDecoder(outputConfig);
                     _start();
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -240,102 +240,12 @@ public class TranscodeRunner {
 
     /**
      * 准备编码器
+     * @param outputConfig
      */
-    private void prepareEncoder() throws Exception {
-        boolean isDolby = false;
-        boolean isH265 = false;
-        String mime;
-        if (mConfig.h265) {
-            isH265 = true;
-            if (MediaFormat.MIMETYPE_VIDEO_DOLBY_VISION.equals(mOriVideoMime)) {
-                //如果是杜比视界，那么需要检查能否使用杜比视界的mimeType
-                mime = MediaFormat.MIMETYPE_VIDEO_DOLBY_VISION;
-                isDolby = true;
-            } else {
-                mime = MediaFormat.MIMETYPE_VIDEO_HEVC;
-            }
-        } else {
-            mime = MediaFormat.MIMETYPE_VIDEO_AVC;
-        }
-        mOutputFormat = MediaFormat.createVideoFormat(mime, mConfig.outWidth, mConfig.outHeight);
-        if (isDolby) {
-            String codecName = MediaCodecUtils.findEncoderByFormat(mOutputFormat, false);
-            if (codecName == null) {
-                //说明没有杜比视界的编码器，降级到Hevc去
-                mime = MediaFormat.MIMETYPE_VIDEO_HEVC;
-                mOutputFormat = MediaFormat.createVideoFormat(mime, mConfig.outWidth,
-                        mConfig.outHeight);
-                isDolby = false;
-            }
-        }
-        mOutputFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT,
-                MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
-        mOutputFormat.setInteger(MediaFormat.KEY_BITRATE_MODE,
-                MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR);
+    private void prepareEncoder(VideoOutputConfig outputConfig) throws Exception {
+        mOutputFormat = MediaCodecUtils.createOutputFormat(mContext, mVideoUri, mOriVideoFormat, mConfig, outputConfig);
 
-        if (mConfig.bitrate > 0) {
-            mOutputFormat.setInteger(MediaFormat.KEY_BIT_RATE, mConfig.bitrate);
-        } else {
-            mOutputFormat.setInteger(MediaFormat.KEY_BIT_RATE, 2500000);
-        }
-        if (mConfig.fps > 0) {
-            mOutputFormat.setInteger(MediaFormat.KEY_FRAME_RATE, mConfig.fps);
-        } else {
-            mOutputFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 25);
-        }
-        mOutputFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
-        if (Build.VERSION.SDK_INT > 23 && isH265) {
-            //不去生成H264的HDR视频
-            //设置Color相关参数，使其尽量保证HDR视频转码后仍然是HDR视频
-            int colorTransfer = 0;
-            if (mOriVideoFormat.containsKey(MediaFormat.KEY_COLOR_STANDARD)) {
-                mOutputFormat.setInteger(MediaFormat.KEY_COLOR_STANDARD,
-                        mOriVideoFormat.getInteger(MediaFormat.KEY_COLOR_STANDARD));
-            }
-            if (mOriVideoFormat.containsKey(MediaFormat.KEY_COLOR_TRANSFER)) {
-                colorTransfer = mOriVideoFormat.getInteger(MediaFormat.KEY_COLOR_TRANSFER);
-                mOutputFormat.setInteger(MediaFormat.KEY_COLOR_TRANSFER, colorTransfer);
-            }
-            if (mOriVideoFormat.containsKey(MediaFormat.KEY_COLOR_RANGE)) {
-                mOutputFormat.setInteger(MediaFormat.KEY_COLOR_RANGE,
-                        mOriVideoFormat.getInteger(MediaFormat.KEY_COLOR_RANGE));
-            }
-            if (mOriVideoFormat.containsKey(MediaFormat.KEY_HDR_STATIC_INFO)) {
-                mOutputFormat.setByteBuffer(MediaFormat.KEY_HDR_STATIC_INFO,
-                        mOriVideoFormat.getByteBuffer(MediaFormat.KEY_HDR_STATIC_INFO));
-            }
-            if (isDolby) {
-                //如果是杜比
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-                    mOutputFormat.setInteger(MediaFormat.KEY_PROFILE,
-                            MediaCodecInfo.CodecProfileLevel.DolbyVisionProfileDvheSt);
-                } else {
-                    mOutputFormat.setInteger(MediaFormat.KEY_PROFILE,
-                            MediaCodecInfo.CodecProfileLevel.DolbyVisionProfileDvheStn);
-                }
-            } else {
-                mOutputFormat.setFeatureEnabled("hdr-editing", true);
-                switch (colorTransfer) {
-                    case MediaFormat.COLOR_TRANSFER_HLG:
-                        //HLG（HGL10）
-                        mOutputFormat.setInteger(MediaFormat.KEY_PROFILE,
-                                MediaCodecInfo.CodecProfileLevel.HEVCProfileMain10);
-                        break;
-                    case MediaFormat.COLOR_TRANSFER_ST2084:
-                        //PQ（HDR10和HDR10+）
-                        //TODO 怎么区分HDR10和HDR10+ HEVCProfileMain10HDR10Plus
-                        mOutputFormat.setInteger(MediaFormat.KEY_PROFILE,
-                                MediaCodecInfo.CodecProfileLevel.HEVCProfileMain10HDR10);
-                        //TODO 可能还是要降级成HEVCProfileMain10
-                        break;
-                    default:
-                        break;
-                }
-            }
-        }
-
-        //TODO 这里需要注意，部分设备硬件编码器是无法保留HDR的（但屏幕本身支持HDR视频显示），因此可能需要改成软件编码器才行
-        String codecName = MediaCodecUtils.findEncoderByFormat(mOutputFormat, false);
+        String codecName = MediaCodecUtils.findEncoderByFormat(mOutputFormat);
         if (TextUtils.isEmpty(codecName)) {
             throw new RuntimeException("没有找到合适的编码器! outputFormat:" + mOutputFormat);
         }
@@ -392,15 +302,16 @@ public class TranscodeRunner {
         mEncoder.configure(mOutputFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
 
         Surface surface = mEncoder.createInputSurface();
-        mEncoderInputSurface = new InputSurface(surface);
+        mEncoderInputSurface = new InputSurface(surface, outputConfig);
         //构造方法中创建了EGL环境后，这里立即进行绑定，后面OutputSurface初始化需要用到
         mEncoderInputSurface.makeCurrent();
     }
 
     /**
      * 准备解码器
+     * @param outputConfig
      */
-    private void prepareDecoder() throws Exception {
+    private void prepareDecoder(VideoOutputConfig outputConfig) throws Exception {
         String codecName = MediaCodecUtils.findDecoderByFormat(mOriVideoFormat, false);
         if (TextUtils.isEmpty(codecName)) {
             throw new RuntimeException("没有找到合适的解码器! videoFormat:" + mOriVideoFormat);
@@ -472,7 +383,7 @@ public class TranscodeRunner {
                 Log.i("Decoder", "decoder output format: " + format);
             }
         }, mDecodeCodecHandler);
-        mDecoderOutputSurface = new OutputSurface();
+        mDecoderOutputSurface = new OutputSurface(outputConfig);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             mOriVideoFormat.setInteger("allow-frame-drop", 0);
         }

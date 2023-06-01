@@ -8,8 +8,11 @@ import android.opengl.EGLContext;
 import android.opengl.EGLDisplay;
 import android.opengl.EGLExt;
 import android.opengl.EGLSurface;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Surface;
+
+import com.demo.mediacodec.MediaCodecUtils;
 
 //代码来源http://androidxref.com/9.0.0_r3/xref/cts/tests/tests/media/src/android/media/cts
 
@@ -35,19 +38,19 @@ public class InputSurface {
     /**
      * Creates an InputSurface from a Surface.
      */
-    public InputSurface(Surface surface) {
+    public InputSurface(Surface surface, VideoOutputConfig config) {
         if (surface == null) {
             throw new NullPointerException();
         }
         mSurface = surface;
 
-        eglSetup();
+        eglSetup(config);
     }
 
     /**
      * Prepares EGL.  We want a GLES 2.0 context and a surface that supports recording.
      */
-    private void eglSetup() {
+    private void eglSetup(VideoOutputConfig config) {
         mEGLDisplay = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY);
         if (mEGLDisplay == EGL14.EGL_NO_DISPLAY) {
             throw new RuntimeException("unable to get EGL14 display");
@@ -58,36 +61,26 @@ public class InputSurface {
             throw new RuntimeException("unable to initialize EGL14");
         }
 
-        // Configure EGL for recordable and OpenGL ES 2.0.  We want enough RGB bits
-        // to minimize artifacts from possible YUV conversion.
-        int[] attribList = {
-                EGL14.EGL_RED_SIZE, 8,
-                EGL14.EGL_GREEN_SIZE, 8,
-                EGL14.EGL_BLUE_SIZE, 8,
-                EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
-                EGLExt.EGL_RECORDABLE_ANDROID, 1,
-                EGL14.EGL_NONE
-        };
-        int[] numConfigs = new int[1];
-        if (!EGL14.eglChooseConfig(mEGLDisplay, attribList, 0, mConfigs, 0, mConfigs.length,
-                numConfigs, 0)) {
-            throw new RuntimeException("unable to find RGB888+recordable ES2 EGL config");
+        if (!config.isHDR) {
+            createSdrEGLContextAndWindow();
+            config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGB888;
+        } else {
+            try {
+                if (config.isDolby) {
+                    //TODO
+                    config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGBA1010102;
+                } else if (config.isHDRVivid) {
+                    //TODO
+                    createYUVP10EGLContextAndWindow();
+                    config.eglColorSpace = MediaCodecUtils.EGLColorSpace.YUVP10;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                createSdrEGLContextAndWindow();
+                config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGB888;
+            }
         }
 
-        // Configure context for OpenGL ES 2.0.
-        int[] attrib_list = {
-                EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
-                EGL14.EGL_NONE
-        };
-        mEGLContext = EGL14.eglCreateContext(mEGLDisplay, mConfigs[0], EGL14.EGL_NO_CONTEXT,
-                attrib_list, 0);
-        checkEglError("eglCreateContext");
-        if (mEGLContext == null) {
-            throw new RuntimeException("null context");
-        }
-
-        // Create a window surface, and attach it to the Surface we received.
-        createEGLSurface();
 
         mWidth = getWidth();
         mHeight = getHeight();
@@ -212,4 +205,76 @@ public class InputSurface {
     public void configure(MediaCodec codec) {
         codec.setInputSurface(mSurface);
     }
+
+    private void createSdrEGLContextAndWindow() {
+        int[] attribList = {
+                EGL14.EGL_RED_SIZE, 8,
+                EGL14.EGL_GREEN_SIZE, 8,
+                EGL14.EGL_BLUE_SIZE, 8,
+                EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
+                EGLExt.EGL_RECORDABLE_ANDROID, 1,
+                EGL14.EGL_NONE
+        };
+        int[] numConfigs = new int[1];
+        if (!EGL14.eglChooseConfig(mEGLDisplay, attribList, 0, mConfigs, 0, mConfigs.length,
+                numConfigs, 0)) {
+            throw new RuntimeException("unable to find RGB888+recordable ES2 EGL config");
+        }
+
+        // Configure context for OpenGL ES 2.0.
+        int[] attrib_list = {
+                EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
+                EGL14.EGL_NONE
+        };
+        mEGLContext = EGL14.eglCreateContext(mEGLDisplay, mConfigs[0], EGL14.EGL_NO_CONTEXT,
+                attrib_list, 0);
+        checkEglError("eglCreateContext");
+        if (mEGLContext == null) {
+            throw new RuntimeException("null context");
+        }
+
+        // Create a window surface, and attach it to the Surface we received.
+        createEGLSurface();
+    }
+
+    private void createYUVP10EGLContextAndWindow() {
+        String extensions = EGL14.eglQueryString(mEGLDisplay, EGL14.EGL_EXTENSIONS);
+        if (TextUtils.isEmpty(extensions) || !extensions.contains(GLUtils.EGL_YUV_EXT_NAME)) {
+            throw new RuntimeException("EGL not support YUV EXT");
+        }
+        int[] attribList = {
+                EGL14.EGL_SURFACE_TYPE, EGL14.EGL_WINDOW_BIT,
+                EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
+                EGL14.EGL_COLOR_BUFFER_TYPE, GLUtils.EGL_YUV_BUFFER_EXT,
+                GLUtils.EGL_YUV_ORDER_EXT, GLUtils.EGL_YUV_ORDER_YUV_EXT,
+                GLUtils.EGL_YUV_NUMBER_OF_PLANES_EXT, 2,
+                GLUtils.EGL_YUV_SUBSAMPLE_EXT, GLUtils.EGL_YUV_SUBSAMPLE_4_2_0_EXT,
+                GLUtils.EGL_YUV_DEPTH_RANGE_EXT, GLUtils.EGL_YUV_DEPTH_RANGE_LIMITED_EXT,
+                GLUtils.EGL_YUV_CSC_STANDARD_EXT, GLUtils.EGL_YUV_CSC_STANDARD_601_EXT,
+                GLUtils.EGL_YUV_PLANE_BPP_EXT, GLUtils.EGL_YUV_PLANE_BPP_10_EXT,
+                EGL14.EGL_NONE
+        };
+        int[] numConfigs = new int[1];
+        if (!EGL14.eglChooseConfig(mEGLDisplay, attribList, 0, mConfigs, 0, mConfigs.length,
+                numConfigs, 0)) {
+            throw new RuntimeException("unable to find YUVP10 ES2 EGL config");
+        }
+        int[] v = new int[1];
+        EGL14.eglGetConfigAttrib(mEGLDisplay, mConfigs[0], EGL14.EGL_NATIVE_VISUAL_ID, v, 0);
+
+        int[] attrib_list = {
+                EGL14.EGL_CONTEXT_CLIENT_VERSION, 3,
+                EGL14.EGL_NONE
+        };
+        mEGLContext = EGL14.eglCreateContext(mEGLDisplay, mConfigs[0], EGL14.EGL_NO_CONTEXT,
+                attrib_list, 0);
+        checkEglError("eglCreateContext");
+        if (mEGLContext == null) {
+            throw new RuntimeException("null context");
+        }
+
+        // Create a window surface, and attach it to the Surface we received.
+        createEGLSurface();
+    }
+
 }

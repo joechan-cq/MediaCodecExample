@@ -23,6 +23,8 @@ import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.util.Log;
 
+import com.demo.mediacodec.MediaCodecUtils;
+
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -36,6 +38,8 @@ import java.nio.FloatBuffer;
  */
 class TextureRender {
     private static final String TAG = "TextureRender";
+
+    private final VideoOutputConfig mOutputConfig;
 
     private static final int FLOAT_SIZE_BYTES = 4;
     private static final int TRIANGLE_VERTICES_DATA_STRIDE_BYTES = 5 * FLOAT_SIZE_BYTES;
@@ -51,26 +55,6 @@ class TextureRender {
 
     private FloatBuffer mTriangleVertices;
 
-    private static final String VERTEX_SHADER =
-            "uniform mat4 uMVPMatrix;\n" +
-                    "uniform mat4 uSTMatrix;\n" +
-                    "attribute vec4 aPosition;\n" +
-                    "attribute vec4 aTextureCoord;\n" +
-                    "varying vec2 vTextureCoord;\n" +
-                    "void main() {\n" +
-                    "  gl_Position = uMVPMatrix * aPosition;\n" +
-                    "  vTextureCoord = (uSTMatrix * aTextureCoord).xy;\n" +
-                    "}\n";
-
-    private static final String FRAGMENT_SHADER =
-            "#extension GL_OES_EGL_image_external : require\n" +
-                    "precision mediump float;\n" +      // highp here doesn't seem to matter
-                    "varying vec2 vTextureCoord;\n" +
-                    "uniform samplerExternalOES sTexture;\n" +
-                    "void main() {\n" +
-                    "  gl_FragColor = texture2D(sTexture, vTextureCoord);\n" +
-                    "}\n";
-
     private float[] mMVPMatrix = new float[16];
     private float[] mSTMatrix = new float[16];
 
@@ -81,7 +65,8 @@ class TextureRender {
     private int maPositionHandle;
     private int maTextureHandle;
 
-    public TextureRender() {
+    public TextureRender(VideoOutputConfig outputConfig) {
+        mOutputConfig = outputConfig;
         mTriangleVertices = ByteBuffer.allocateDirect(
                         mTriangleVerticesData.length * FLOAT_SIZE_BYTES)
                 .order(ByteOrder.nativeOrder()).asFloatBuffer();
@@ -134,7 +119,11 @@ class TextureRender {
      * Initializes GL state.  Call this after the EGL surface has been created and made current.
      */
     public void surfaceCreated() {
-        mProgram = createProgram(VERTEX_SHADER, FRAGMENT_SHADER);
+        if (mOutputConfig.eglColorSpace == MediaCodecUtils.EGLColorSpace.YUVP10) {
+            mProgram = createProgram(GLUtils.YUV_VERTEX_SHADER, GLUtils.YUV_FRAGMENT_SHADER);
+        } else {
+            mProgram = createProgram(GLUtils.RGBA_VERTEX_SHADER, GLUtils.RGBA_FRAGMENT_SHADER);
+        }
         if (mProgram == 0) {
             throw new RuntimeException("failed creating program");
         }
@@ -178,17 +167,6 @@ class TextureRender {
         GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T,
                 GLES20.GL_CLAMP_TO_EDGE);
         checkGlError("glTexParameter");
-    }
-
-    /**
-     * Replaces the fragment shader.
-     */
-    public void changeFragmentShader(String fragmentShader) {
-        GLES20.glDeleteProgram(mProgram);
-        mProgram = createProgram(VERTEX_SHADER, fragmentShader);
-        if (mProgram == 0) {
-            throw new RuntimeException("failed creating program");
-        }
     }
 
     private int loadShader(int shaderType, String source) {

@@ -44,17 +44,19 @@ public class OutputSurface implements SurfaceTexture.OnFrameAvailableListener {
     /**
      * Creates an OutputSurface using the current EGL context (rather than establishing a
      * new one).  Creates a Surface that can be passed to MediaCodec.configure().
+     * @param outputConfig
      */
-    public OutputSurface() {
-        setup(this);
+    public OutputSurface(VideoOutputConfig outputConfig) {
+        setup(this, outputConfig);
     }
 
     /**
      * Creates instances of TextureRender and SurfaceTexture, and a Surface associated
      * with the SurfaceTexture.
      */
-    private void setup(SurfaceTexture.OnFrameAvailableListener listener) {
-        mTextureRender = new TextureRender();
+    private void setup(SurfaceTexture.OnFrameAvailableListener listener,
+                       VideoOutputConfig outputConfig) {
+        mTextureRender = new TextureRender(outputConfig);
         mTextureRender.surfaceCreated();
 
         // Even if we don't access the SurfaceTexture after the constructor returns, we
@@ -120,13 +122,6 @@ public class OutputSurface implements SurfaceTexture.OnFrameAvailableListener {
      */
     public Surface getSurface() {
         return mSurface;
-    }
-
-    /**
-     * Replaces the fragment shader.
-     */
-    public void changeFragmentShader(String fragmentShader) {
-        mTextureRender.changeFragmentShader(fragmentShader);
     }
 
     /**
