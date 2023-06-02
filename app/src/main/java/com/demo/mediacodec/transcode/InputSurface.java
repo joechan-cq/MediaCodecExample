@@ -65,19 +65,12 @@ public class InputSurface {
             createSdrEGLContextAndWindow();
             config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGB888;
         } else {
-            try {
-                if (config.isDolby) {
-                    //TODO
-                    config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGBA1010102;
-                } else if (config.isHDRVivid) {
-                    //TODO
-                    createYUVP10EGLContextAndWindow();
-                    config.eglColorSpace = MediaCodecUtils.EGLColorSpace.YUVP10;
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                createSdrEGLContextAndWindow();
-                config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGB888;
+            if (config.isDolby) {
+                createRGBA1010102EGLContextAndWindow();
+                config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGBA1010102;
+            } else if (config.isHDRVivid) {
+                createYUVP10EGLContextAndWindow();
+                config.eglColorSpace = MediaCodecUtils.EGLColorSpace.YUVP10;
             }
         }
 
@@ -219,6 +212,38 @@ public class InputSurface {
         if (!EGL14.eglChooseConfig(mEGLDisplay, attribList, 0, mConfigs, 0, mConfigs.length,
                 numConfigs, 0)) {
             throw new RuntimeException("unable to find RGB888+recordable ES2 EGL config");
+        }
+
+        // Configure context for OpenGL ES 2.0.
+        int[] attrib_list = {
+                EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
+                EGL14.EGL_NONE
+        };
+        mEGLContext = EGL14.eglCreateContext(mEGLDisplay, mConfigs[0], EGL14.EGL_NO_CONTEXT,
+                attrib_list, 0);
+        checkEglError("eglCreateContext");
+        if (mEGLContext == null) {
+            throw new RuntimeException("null context");
+        }
+
+        // Create a window surface, and attach it to the Surface we received.
+        createEGLSurface();
+    }
+
+    private void createRGBA1010102EGLContextAndWindow() {
+        //TODO 需要检查是否支持
+        int[] attribList = {
+                EGL14.EGL_RED_SIZE, 10,
+                EGL14.EGL_GREEN_SIZE, 10,
+                EGL14.EGL_BLUE_SIZE, 10,
+                EGL14.EGL_ALPHA_SIZE, 2,
+                EGL14.EGL_RENDERABLE_TYPE, EGLExt.EGL_OPENGL_ES3_BIT_KHR,
+                EGL14.EGL_NONE
+        };
+        int[] numConfigs = new int[1];
+        if (!EGL14.eglChooseConfig(mEGLDisplay, attribList, 0, mConfigs, 0, mConfigs.length,
+                numConfigs, 0)) {
+            throw new RuntimeException("unable to find RGB1010102 recordable ES2 EGL config");
         }
 
         // Configure context for OpenGL ES 2.0.

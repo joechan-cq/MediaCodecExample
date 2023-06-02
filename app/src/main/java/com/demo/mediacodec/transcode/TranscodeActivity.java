@@ -32,7 +32,7 @@ import androidx.annotation.UiThread;
 public class TranscodeActivity extends BaseActivity implements TranscodeRunner.OnTranscodeListener {
 
     private TextView mVideoInfoTv, mErrorTv;
-    private TextInputEditText mDstWidthEdt, mDstHeightEdt, mDstBitrateEdt;
+    private TextInputEditText mDstWidthEdt, mDstHeightEdt, mDstBitrateEdt, mDstFpsEdt;
     private Button mTransCodeBtn;
 
     private TranscodeRunner transcodeRunner;
@@ -55,6 +55,7 @@ public class TranscodeActivity extends BaseActivity implements TranscodeRunner.O
         mDstWidthEdt = findViewById(R.id.edt_dst_width);
         mDstHeightEdt = findViewById(R.id.edt_dst_height);
         mDstBitrateEdt = findViewById(R.id.edt_dst_bitrate);
+        mDstFpsEdt = findViewById(R.id.edt_dst_fps);
 
         TextWatcher watcher = new TextWatcher() {
             @Override
@@ -87,6 +88,7 @@ public class TranscodeActivity extends BaseActivity implements TranscodeRunner.O
             config.outWidth = Integer.parseInt(mDstWidthEdt.getEditableText().toString());
             config.outHeight = Integer.parseInt(mDstHeightEdt.getEditableText().toString());
             config.bitrate = Integer.parseInt(mDstBitrateEdt.getEditableText().toString());
+            config.fps = Integer.parseInt(mDstFpsEdt.getEditableText().toString());
             try {
                 if (config.dstPath.exists()) {
                     config.dstPath.delete();
@@ -114,10 +116,6 @@ public class TranscodeActivity extends BaseActivity implements TranscodeRunner.O
             int width = videoFormat.getInteger(MediaFormat.KEY_WIDTH);
             int height = videoFormat.getInteger(MediaFormat.KEY_HEIGHT);
             int rotation = 0;
-            int bitrate = 3000000;
-            if (videoFormat.containsKey(MediaFormat.KEY_BIT_RATE)) {
-                bitrate = videoFormat.getInteger(MediaFormat.KEY_BIT_RATE);
-            }
             if (videoFormat.containsKey(MediaFormat.KEY_ROTATION)) {
                 rotation = videoFormat.getInteger(MediaFormat.KEY_ROTATION);
             }
@@ -128,7 +126,6 @@ public class TranscodeActivity extends BaseActivity implements TranscodeRunner.O
             }
             mDstWidthEdt.setText(String.valueOf(width));
             mDstHeightEdt.setText(String.valueOf(height));
-            mDstBitrateEdt.setText(String.valueOf(bitrate));
         });
     }
 

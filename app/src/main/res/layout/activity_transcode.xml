@@ -43,7 +43,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@color/white"
-                android:hint="输入压缩视频宽"
+                android:hint="输出视频宽"
                 android:inputType="numberSigned"
                 android:textSize="13sp" />
         </com.google.android.material.textfield.TextInputLayout>
@@ -63,7 +63,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@color/white"
-                android:hint="输入压缩视频高"
+                android:hint="输出视频高"
                 android:inputType="numberSigned"
                 android:textSize="13sp" />
         </com.google.android.material.textfield.TextInputLayout>
@@ -83,8 +83,30 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@color/white"
-                android:hint="输入输出比特率"
+                android:hint="输出比特率"
                 android:inputType="numberSigned"
+                android:text="3000000"
+                android:textSize="13sp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/layout_dst_fps"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:hintTextColor="@color/purple_500"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/layout_dst_bitrate">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/edt_dst_fps"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/white"
+                android:hint="输出帧率"
+                android:inputType="numberSigned"
+                android:text="30"
                 android:textSize="13sp" />
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -94,7 +116,7 @@
             android:layout_height="wrap_content"
             android:text="H265编码"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/layout_dst_bitrate" />
+            app:layout_constraintTop_toBottomOf="@+id/layout_dst_fps" />
 
         <Button
             android:id="@+id/btn_transcode"

@@ -18,6 +18,7 @@ public class VideoOutputConfig {
 
     public MediaCodecUtils.EGLColorSpace eglColorSpace;
 
-    public VideoOutputConfig() {
+    public VideoOutputConfig(MediaCodecUtils.OutputLevel outputLevel) {
+        this.outputLevel = outputLevel;
     }
 }

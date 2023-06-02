@@ -50,7 +50,8 @@ public class MediaCodecUtils {
                 }
                 String mimeType = mediaFormat.getString(MediaFormat.KEY_MIME);
                 try {
-                    MediaCodecInfo.CodecCapabilities capabilities = codecInfo.getCapabilitiesForType(mimeType);
+                    MediaCodecInfo.CodecCapabilities capabilities =
+                            codecInfo.getCapabilitiesForType(mimeType);
                     if (capabilities.isFormatSupported(mediaFormat)) {
                         return codecInfo.getName();
                     }
@@ -82,7 +83,8 @@ public class MediaCodecUtils {
                 }
                 String mimeType = mediaFormat.getString(MediaFormat.KEY_MIME);
                 try {
-                    MediaCodecInfo.CodecCapabilities capabilities = codecInfo.getCapabilitiesForType(mimeType);
+                    MediaCodecInfo.CodecCapabilities capabilities =
+                            codecInfo.getCapabilitiesForType(mimeType);
                     if (capabilities.isFormatSupported(mediaFormat)) {
                         return codecInfo.getName();
                     }
@@ -142,14 +144,17 @@ public class MediaCodecUtils {
     }
 
     @NonNull
-    public static MediaFormat createOutputFormat(@NonNull Context ctx, @NonNull Uri srcUri, @NonNull MediaFormat mOriVideoFormat, @NonNull TranscodeConfig config, @NonNull VideoOutputConfig outputConfig) {
+    public static MediaFormat createOutputFormat(@NonNull Context ctx, @NonNull Uri srcUri,
+                                                 @NonNull MediaFormat mOriVideoFormat,
+                                                 @NonNull TranscodeConfig config,
+                                                 @NonNull VideoOutputConfig outputConfig) {
         MediaFormat outputFormat;
         String inMimeType = mOriVideoFormat.getString(MediaFormat.KEY_MIME);
         boolean isH265 = false;
         String mime;
         if (config.h265) {
             isH265 = true;
-            if (MediaFormat.MIMETYPE_VIDEO_DOLBY_VISION.equals(inMimeType) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            if (outputConfig.outputLevel != OutputLevel.NO_HDR && MediaFormat.MIMETYPE_VIDEO_DOLBY_VISION.equals(inMimeType) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 //如果是杜比视界，那么需要检查能否使用杜比视界的mimeType
                 mime = MediaFormat.MIMETYPE_VIDEO_DOLBY_VISION;
                 outputConfig.isDolby = true;
@@ -165,7 +170,8 @@ public class MediaCodecUtils {
             if (codecName == null) {
                 //说明没有杜比视界的编码器，降级到Hevc去
                 mime = MediaFormat.MIMETYPE_VIDEO_HEVC;
-                outputFormat = MediaFormat.createVideoFormat(mime, config.outWidth, config.outHeight);
+                outputFormat = MediaFormat.createVideoFormat(mime, config.outWidth,
+                        config.outHeight);
                 outputConfig.isDolby = false;
             }
         }
@@ -190,51 +196,56 @@ public class MediaCodecUtils {
             //设置Color相关参数，使其尽量保证HDR视频转码后仍然是HDR视频
             int colorTransfer = 0;
             int colorStandard = mOriVideoFormat.getInteger(MediaFormat.KEY_COLOR_STANDARD);
-            outputConfig.isHDR = colorStandard == MediaFormat.COLOR_STANDARD_BT2020;
+            outputConfig.isHDR =
+                    outputConfig.outputLevel != OutputLevel.NO_HDR && colorStandard == MediaFormat.COLOR_STANDARD_BT2020;
             if (outputConfig.isHDR) {
                 outputConfig.isHDRVivid = MediaCodecUtils.isHDRVivid(ctx, null, srcUri, null);
             }
-            if (mOriVideoFormat.containsKey(MediaFormat.KEY_COLOR_STANDARD)) {
-                outputFormat.setInteger(MediaFormat.KEY_COLOR_STANDARD, colorStandard);
-            }
-            if (mOriVideoFormat.containsKey(MediaFormat.KEY_COLOR_TRANSFER)) {
-                colorTransfer = mOriVideoFormat.getInteger(MediaFormat.KEY_COLOR_TRANSFER);
-                outputFormat.setInteger(MediaFormat.KEY_COLOR_TRANSFER, colorTransfer);
-            }
-            if (mOriVideoFormat.containsKey(MediaFormat.KEY_COLOR_RANGE)) {
-                outputFormat.setInteger(MediaFormat.KEY_COLOR_RANGE,
-                        mOriVideoFormat.getInteger(MediaFormat.KEY_COLOR_RANGE));
-            }
-            if (mOriVideoFormat.containsKey(MediaFormat.KEY_HDR_STATIC_INFO)) {
-                outputFormat.setByteBuffer(MediaFormat.KEY_HDR_STATIC_INFO,
-                        mOriVideoFormat.getByteBuffer(MediaFormat.KEY_HDR_STATIC_INFO));
-            }
-            if (outputConfig.isDolby) {
-                //如果是杜比
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-                    outputFormat.setInteger(MediaFormat.KEY_PROFILE,
-                            MediaCodecInfo.CodecProfileLevel.DolbyVisionProfileDvheSt);
-                } else {
-                    outputFormat.setInteger(MediaFormat.KEY_PROFILE,
-                            MediaCodecInfo.CodecProfileLevel.DolbyVisionProfileDvheStn);
+            if (outputConfig.isHDR) {
+                if (mOriVideoFormat.containsKey(MediaFormat.KEY_COLOR_STANDARD)) {
+                    outputFormat.setInteger(MediaFormat.KEY_COLOR_STANDARD, colorStandard);
                 }
-            } else {
-                outputFormat.setFeatureEnabled("hdr-editing", true);
-                switch (colorTransfer) {
-                    case MediaFormat.COLOR_TRANSFER_HLG:
-                        //HLG（HGL10）
-                        outputFormat.setInteger(MediaFormat.KEY_PROFILE,
-                                MediaCodecInfo.CodecProfileLevel.HEVCProfileMain10);
-                        break;
-                    case MediaFormat.COLOR_TRANSFER_ST2084:
-                        //PQ（HDR10和HDR10+）
-                        //TODO 怎么区分HDR10和HDR10+ HEVCProfileMain10HDR10Plus
-                        outputFormat.setInteger(MediaFormat.KEY_PROFILE,
-                                MediaCodecInfo.CodecProfileLevel.HEVCProfileMain10HDR10);
-                        //TODO 可能还是要降级成HEVCProfileMain10
-                        break;
-                    default:
-                        break;
+                if (mOriVideoFormat.containsKey(MediaFormat.KEY_COLOR_TRANSFER)) {
+                    colorTransfer = mOriVideoFormat.getInteger(MediaFormat.KEY_COLOR_TRANSFER);
+                    outputFormat.setInteger(MediaFormat.KEY_COLOR_TRANSFER, colorTransfer);
+                }
+                if (mOriVideoFormat.containsKey(MediaFormat.KEY_COLOR_RANGE)) {
+                    outputFormat.setInteger(MediaFormat.KEY_COLOR_RANGE,
+                            mOriVideoFormat.getInteger(MediaFormat.KEY_COLOR_RANGE));
+                }
+                if (mOriVideoFormat.containsKey(MediaFormat.KEY_HDR_STATIC_INFO)) {
+                    outputFormat.setByteBuffer(MediaFormat.KEY_HDR_STATIC_INFO,
+                            mOriVideoFormat.getByteBuffer(MediaFormat.KEY_HDR_STATIC_INFO));
+                }
+                if (outputConfig.outputLevel != OutputLevel.NO_PROFILE) {
+                    if (outputConfig.isDolby) {
+                        //如果是杜比
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                            outputFormat.setInteger(MediaFormat.KEY_PROFILE,
+                                    MediaCodecInfo.CodecProfileLevel.DolbyVisionProfileDvheSt);
+                        } else {
+                            outputFormat.setInteger(MediaFormat.KEY_PROFILE,
+                                    MediaCodecInfo.CodecProfileLevel.DolbyVisionProfileDvheStn);
+                        }
+                    } else {
+                        outputFormat.setFeatureEnabled("hdr-editing", true);
+                        switch (colorTransfer) {
+                            case MediaFormat.COLOR_TRANSFER_HLG:
+                                //HLG（HGL10）
+                                outputFormat.setInteger(MediaFormat.KEY_PROFILE,
+                                        MediaCodecInfo.CodecProfileLevel.HEVCProfileMain10);
+                                break;
+                            case MediaFormat.COLOR_TRANSFER_ST2084:
+                                //PQ（HDR10和HDR10+）
+                                //TODO 怎么区分HDR10和HDR10+ HEVCProfileMain10HDR10Plus
+                                outputFormat.setInteger(MediaFormat.KEY_PROFILE,
+                                        MediaCodecInfo.CodecProfileLevel.HEVCProfileMain10HDR10);
+                                //TODO 可能还是要降级成HEVCProfileMain10
+                                break;
+                            default:
+                                break;
+                        }
+                    }
                 }
             }
         }
