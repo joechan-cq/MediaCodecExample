@@ -381,6 +381,13 @@ public class TranscodeRunner {
                     mOriVideoFormat.removeKey(MediaFormat.KEY_LEVEL);
                 }
                 codecName = MediaCodecUtils.findDecoderByFormat(mOriVideoFormat);
+            } else if (MediaFormat.MIMETYPE_VIDEO_HEVC.equals(mOriVideoMime)) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    //HEVC的话，尝试移除Profile和Level
+                    mOriVideoFormat.removeKey(MediaFormat.KEY_PROFILE);
+                    mOriVideoFormat.removeKey(MediaFormat.KEY_LEVEL);
+                }
+                codecName = MediaCodecUtils.findDecoderByFormat(mOriVideoFormat);
             } else {
                 throw new RuntimeException("没有找到合适的解码器! videoFormat:" + mOriVideoFormat);
             }

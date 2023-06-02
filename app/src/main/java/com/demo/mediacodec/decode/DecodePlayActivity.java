@@ -5,6 +5,7 @@ import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
 import android.os.SystemClock;
@@ -187,76 +188,95 @@ public class DecodePlayActivity extends BaseActivity {
             }
         });
 
-        String codecName = MediaCodecUtils.findDecoderByFormat(mVideoFormat, false);
+        String codecName = MediaCodecUtils.findDecoderByFormat(mVideoFormat);
+        if (TextUtils.isEmpty(codecName)) {
+            if (MediaFormat.MIMETYPE_VIDEO_DOLBY_VISION.equals(mime)) {
+                //如果是杜比视界，那么尝试用HEVC的解码器去解
+                mVideoFormat.setString(MediaFormat.KEY_MIME, MediaFormat.MIMETYPE_VIDEO_HEVC);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    //因为杜比视界的profile和level是单独的，这里降级到HEVC的话，Profile和Level也要移除，否则还是会找不到解码器
+                    mVideoFormat.removeKey(MediaFormat.KEY_PROFILE);
+                    mVideoFormat.removeKey(MediaFormat.KEY_LEVEL);
+                }
+                codecName = MediaCodecUtils.findDecoderByFormat(mVideoFormat);
+            } else if (MediaFormat.MIMETYPE_VIDEO_HEVC.equals(mime)) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    //HEVC的话，尝试移除Profile和Level
+                    mVideoFormat.removeKey(MediaFormat.KEY_PROFILE);
+                    mVideoFormat.removeKey(MediaFormat.KEY_LEVEL);
+                }
+                codecName = MediaCodecUtils.findDecoderByFormat(mVideoFormat);
+            }
+        }
         if (TextUtils.isEmpty(codecName)) {
             log.append("没有找到解码器!").append("\n");
             setDebugLog(log.toString());
-        } else {
-            log.append("找到解码器：").append(codecName).append("\n");
-            setDebugLog(log.toString());
+            return;
+        }
 
-            try {
-                //以同步模式进行解码
-                MediaCodec decoder = MediaCodec.createByCodecName(codecName);
-                mMediaCodec = decoder;
-                decoder.configure(mVideoFormat, mSurfaceView.getHolder().getSurface(), null, 0);
-                decoder.start();
+        log.append("找到解码器：").append(codecName).append("\n");
+        setDebugLog(log.toString());
 
-                ByteBuffer byteBuffer = ByteBuffer.allocate(maxCache);
-                int sampleSize;
-                MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+        try {
+            //以同步模式进行解码
+            MediaCodec decoder = MediaCodec.createByCodecName(codecName);
+            mMediaCodec = decoder;
+            decoder.configure(mVideoFormat, mSurfaceView.getHolder().getSurface(), null, 0);
+            decoder.start();
 
-                long startTime = System.nanoTime(); //ns
+            ByteBuffer byteBuffer = ByteBuffer.allocate(maxCache);
+            int sampleSize;
+            MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
 
-                //不停读取轨道数据
-                while ((sampleSize = mMediaExtractor.readSampleData(byteBuffer, 0)) > 0) {
-                    long sampleTime = mMediaExtractor.getSampleTime(); //us
+            long startTime = System.nanoTime(); //ns
 
-                    //从decoder中取出输入缓冲队列
-                    int index = decoder.dequeueInputBuffer(10 * 1000L);
-                    if (index > -1) {
-                        ByteBuffer inputBuffer = decoder.getInputBuffer(index);
-                        //将从轨道读取的数据，填充进输入缓冲中
-                        inputBuffer.clear();
-                        inputBuffer.put(byteBuffer);
-                        //将输入缓冲还给解码器
-                        decoder.queueInputBuffer(index, 0, sampleSize, sampleTime, 0);
-                    }
+            //不停读取轨道数据
+            while ((sampleSize = mMediaExtractor.readSampleData(byteBuffer, 0)) > 0) {
+                long sampleTime = mMediaExtractor.getSampleTime(); //us
 
-                    //从解码器中处理解码后的数据
-                    int outIndex = decoder.dequeueOutputBuffer(bufferInfo, 10 * 1000L);
-                    if (outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                        //do nothing
-                    } else if (outIndex > -1) {
-                        //检查是否到了渲染时间，没到的话sleep到渲染时间
-                        if (System.nanoTime() - startTime < bufferInfo.presentationTimeUs * 1000L) {
-                            SystemClock.sleep((bufferInfo.presentationTimeUs - (System.nanoTime() - startTime) / 1000) / 1000);
-                        }
-                        //这里直接将解码后的数据刷到Surface即可
-                        decoder.releaseOutputBuffer(outIndex, true);
-                    }
-
-                    //获取接下来的轨道数据
-                    boolean hasNext = mMediaExtractor.advance();
-                    if (hasNext) {
-                        byteBuffer.clear();
-                    } else {
-                        break;
-                    }
+                //从decoder中取出输入缓冲队列
+                int index = decoder.dequeueInputBuffer(10 * 1000L);
+                if (index > -1) {
+                    ByteBuffer inputBuffer = decoder.getInputBuffer(index);
+                    //将从轨道读取的数据，填充进输入缓冲中
+                    inputBuffer.clear();
+                    inputBuffer.put(byteBuffer);
+                    //将输入缓冲还给解码器
+                    decoder.queueInputBuffer(index, 0, sampleSize, sampleTime, 0);
                 }
 
-                if (mMediaCodec != null) {
-                    mMediaCodec.release();
+                //从解码器中处理解码后的数据
+                int outIndex = decoder.dequeueOutputBuffer(bufferInfo, 10 * 1000L);
+                if (outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                    //do nothing
+                } else if (outIndex > -1) {
+                    //检查是否到了渲染时间，没到的话sleep到渲染时间
+                    if (System.nanoTime() - startTime < bufferInfo.presentationTimeUs * 1000L) {
+                        SystemClock.sleep((bufferInfo.presentationTimeUs - (System.nanoTime() - startTime) / 1000) / 1000);
+                    }
+                    //这里直接将解码后的数据刷到Surface即可
+                    decoder.releaseOutputBuffer(outIndex, true);
                 }
-                if (mMediaExtractor != null) {
-                    mMediaExtractor.release();
+
+                //获取接下来的轨道数据
+                boolean hasNext = mMediaExtractor.advance();
+                if (hasNext) {
+                    byteBuffer.clear();
+                } else {
+                    break;
                 }
-                log.append("解码完成，释放资源！").append("\n");
-                setDebugLog(log.toString());
-            } catch (IOException e) {
-                e.printStackTrace();
             }
 
+            if (mMediaCodec != null) {
+                mMediaCodec.release();
+            }
+            if (mMediaExtractor != null) {
+                mMediaExtractor.release();
+            }
+            log.append("解码完成，释放资源！").append("\n");
+            setDebugLog(log.toString());
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

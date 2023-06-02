@@ -193,7 +193,7 @@ public class MediaCodecUtils {
         if (config.fps > 0) {
             outputFormat.setInteger(MediaFormat.KEY_FRAME_RATE, config.fps);
         } else {
-            outputFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 25);
+            outputFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
         }
         outputFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
         if (Build.VERSION.SDK_INT > 23 && isH265) {
