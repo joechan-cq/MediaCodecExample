@@ -80,6 +80,7 @@ public class InputSurface {
                     config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGBA1010102;
                 } catch (Exception e) {
                     e.printStackTrace();
+                    Log.i("InputSurface", "eglSetup: RGBA1010102初始化失败，尝试使用RGBA8888");
                     createSdrEGLContextAndWindow();
                     config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGB888;
                 }

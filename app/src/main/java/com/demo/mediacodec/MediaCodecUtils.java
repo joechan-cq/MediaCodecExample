@@ -35,6 +35,11 @@ public class MediaCodecUtils {
     }
 
     @Nullable
+    public static String findDecoderByFormat(MediaFormat mediaFormat) {
+        return findDecoderByFormat(mediaFormat, false);
+    }
+
+    @Nullable
     public static String findDecoderByFormat(MediaFormat mediaFormat, boolean onlySoftware) {
         MediaCodecList codecList = new MediaCodecList(MediaCodecList.ALL_CODECS);
         if (!onlySoftware) {

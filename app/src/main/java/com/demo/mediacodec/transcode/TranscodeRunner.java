@@ -370,7 +370,21 @@ public class TranscodeRunner {
      * 准备解码器
      */
     private void prepareDecoder(VideoOutputConfig outputConfig, AtomicInteger hdrCounter) throws Exception {
-        String codecName = MediaCodecUtils.findDecoderByFormat(mOriVideoFormat, false);
+        String codecName = MediaCodecUtils.findDecoderByFormat(mOriVideoFormat);
+        if (TextUtils.isEmpty(codecName)) {
+            if (MediaFormat.MIMETYPE_VIDEO_DOLBY_VISION.equals(mOriVideoMime)) {
+                //如果是杜比视界，那么尝试用HEVC的解码器去解
+                mOriVideoFormat.setString(MediaFormat.KEY_MIME, MediaFormat.MIMETYPE_VIDEO_HEVC);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    //因为杜比视界的profile和level是单独的，这里降级到HEVC的话，Profile和Level也要移除，否则还是会找不到解码器
+                    mOriVideoFormat.removeKey(MediaFormat.KEY_PROFILE);
+                    mOriVideoFormat.removeKey(MediaFormat.KEY_LEVEL);
+                }
+                codecName = MediaCodecUtils.findDecoderByFormat(mOriVideoFormat);
+            } else {
+                throw new RuntimeException("没有找到合适的解码器! videoFormat:" + mOriVideoFormat);
+            }
+        }
         if (TextUtils.isEmpty(codecName)) {
             throw new RuntimeException("没有找到合适的解码器! videoFormat:" + mOriVideoFormat);
         }
@@ -400,7 +414,7 @@ public class TranscodeRunner {
             public void onOutputBufferAvailable(@NonNull MediaCodec codec, int index,
                                                 @NonNull MediaCodec.BufferInfo info) {
                 if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0 && (info.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0) {
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         byte[] hdr10Info = null;
                         MediaFormat f = codec.getOutputFormat(index);
                         if (f.containsKey(MediaFormat.KEY_HDR10_PLUS_INFO)) {
