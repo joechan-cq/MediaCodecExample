@@ -430,7 +430,9 @@ public class TranscodeRunner {
                                 Bundle codecParameters = new Bundle();
                                 codecParameters.putByteArray(MediaCodec.PARAMETER_KEY_HDR10_PLUS_INFO,
                                         hdr10Info);
-                                mEncoder.setParameters(codecParameters);
+                                if (mEncoder != null) {
+                                    mEncoder.setParameters(codecParameters);
+                                }
                             }
                         }
                     }

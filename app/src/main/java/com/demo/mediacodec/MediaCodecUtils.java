@@ -239,7 +239,7 @@ public class MediaCodecUtils {
                                 //PQ（HDR10和HDR10+）
                                 //TODO 怎么区分HDR10和HDR10+ HEVCProfileMain10HDR10Plus
                                 outputFormat.setInteger(MediaFormat.KEY_PROFILE,
-                                        MediaCodecInfo.CodecProfileLevel.HEVCProfileMain10HDR10);
+                                        MediaCodecInfo.CodecProfileLevel.HEVCProfileMain10);
                                 //TODO 可能还是要降级成HEVCProfileMain10
                                 break;
                             default:

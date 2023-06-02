@@ -66,11 +66,23 @@ public class InputSurface {
             config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGB888;
         } else {
             if (config.isDolby) {
+                //杜比视界
                 createRGBA1010102EGLContextAndWindow();
                 config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGBA1010102;
             } else if (config.isHDRVivid) {
+                //vivid
                 createYUVP10EGLContextAndWindow();
                 config.eglColorSpace = MediaCodecUtils.EGLColorSpace.YUVP10;
+            } else {
+                //不是杜比视界、不是hdr vivid。
+                try {
+                    createRGBA1010102EGLContextAndWindow();
+                    config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGBA1010102;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    createSdrEGLContextAndWindow();
+                    config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGB888;
+                }
             }
         }
 
@@ -238,6 +250,7 @@ public class InputSurface {
                 EGL14.EGL_BLUE_SIZE, 10,
                 EGL14.EGL_ALPHA_SIZE, 2,
                 EGL14.EGL_RENDERABLE_TYPE, EGLExt.EGL_OPENGL_ES3_BIT_KHR,
+                EGLExt.EGL_RECORDABLE_ANDROID, 1,
                 EGL14.EGL_NONE
         };
         int[] numConfigs = new int[1];
