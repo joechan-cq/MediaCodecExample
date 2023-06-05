@@ -16,6 +16,8 @@ public class VideoOutputConfig {
 
     public boolean isDolby;
 
+    public boolean force8Bit;
+
     public MediaCodecUtils.EGLColorSpace eglColorSpace;
 
     public VideoOutputConfig(MediaCodecUtils.OutputLevel outputLevel) {

@@ -61,18 +61,21 @@ public class InputSurface {
             throw new RuntimeException("unable to initialize EGL14");
         }
 
-        if (!config.isHDR) {
+        if (!config.isHDR || config.force8Bit) {
             createSdrEGLContextAndWindow();
             config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGB888;
+            Log.i("InputSurface", "使用RGBA8888");
         } else {
             if (config.isDolby) {
                 //杜比视界
                 createRGBA1010102EGLContextAndWindow();
                 config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGBA1010102;
+                Log.i("InputSurface", "使用RGBA1010102");
             } else if (config.isHDRVivid) {
                 //vivid
                 createYUVP10EGLContextAndWindow();
                 config.eglColorSpace = MediaCodecUtils.EGLColorSpace.YUVP10;
+                Log.i("InputSurface", "使用YUVP10");
             } else {
                 //不是杜比视界、不是hdr vivid。
                 try {

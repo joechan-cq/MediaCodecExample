@@ -38,7 +38,7 @@ public class TranscodeActivity extends BaseActivity implements TranscodeRunner.O
     private TranscodeRunner transcodeRunner;
     private ProgressDialog mProgressDialog;
 
-    private MaterialCheckBox mH265Cb;
+    private MaterialCheckBox mH265Cb, mForce8BitCb;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -51,6 +51,7 @@ public class TranscodeActivity extends BaseActivity implements TranscodeRunner.O
 
         mErrorTv = findViewById(R.id.tv_errorInfo);
         mH265Cb = findViewById(R.id.cb_h265);
+        mForce8BitCb = findViewById(R.id.cb_force_8_bit);
         mVideoInfoTv = findViewById(R.id.tv_ori_video_info);
         mDstWidthEdt = findViewById(R.id.edt_dst_width);
         mDstHeightEdt = findViewById(R.id.edt_dst_height);
@@ -89,6 +90,7 @@ public class TranscodeActivity extends BaseActivity implements TranscodeRunner.O
             config.outHeight = Integer.parseInt(mDstHeightEdt.getEditableText().toString());
             config.bitrate = Integer.parseInt(mDstBitrateEdt.getEditableText().toString());
             config.fps = Integer.parseInt(mDstFpsEdt.getEditableText().toString());
+            config.force8Bit = mForce8BitCb.isChecked();
             try {
                 if (config.dstPath.exists()) {
                     config.dstPath.delete();

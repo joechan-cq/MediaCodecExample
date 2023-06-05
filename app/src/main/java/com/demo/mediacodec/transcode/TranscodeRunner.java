@@ -168,6 +168,7 @@ public class TranscodeRunner {
                     AtomicInteger hdrCounter = new AtomicInteger(0);
                     VideoOutputConfig outputConfig =
                             new VideoOutputConfig(MediaCodecUtils.OutputLevel.DEFAULT);
+                    outputConfig.force8Bit = mConfig.force8Bit;
                     innerPrepareEncoder(outputConfig, hdrCounter);
                     prepareDecoder(outputConfig, hdrCounter);
                     _start();
