@@ -8,7 +8,6 @@ import android.media.MediaFormat;
 import android.media.MediaMuxer;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.ParcelFileDescriptor;
@@ -62,6 +61,7 @@ public class TranscodeRunner {
 
     private String mOriVideoMime;
     private int mOriVideoWidth, mOriVideoHeight;
+    private int mOriVideoFps;
     private long mVideoDurationUs;
 
     private OnTranscodeListener listener;
@@ -84,8 +84,6 @@ public class TranscodeRunner {
     //编码回调线程
     private HandlerThread mEncodeCodecThread;
     private Handler mEncodeCodecHandler;
-
-    private final Object hdrInfoLock = new Object();
 
     public TranscodeRunner(Context context, Uri uri) {
         mContext = context;
@@ -266,6 +264,7 @@ public class TranscodeRunner {
         mOriVideoMime = mOriVideoFormat.getString(MediaFormat.KEY_MIME);
         mOriVideoWidth = mOriVideoFormat.getInteger(MediaFormat.KEY_WIDTH);
         mOriVideoHeight = mOriVideoFormat.getInteger(MediaFormat.KEY_HEIGHT);
+        mOriVideoFps = mOriVideoFormat.getInteger(MediaFormat.KEY_FRAME_RATE);
         mVideoDurationUs = mOriVideoFormat.getLong(MediaFormat.KEY_DURATION);
     }
 
@@ -307,18 +306,6 @@ public class TranscodeRunner {
                     long presentationTimeUs = info.presentationTimeUs;
                     callProgress((int) (presentationTimeUs * 100 / mVideoDurationUs));
                     Log.i("Encoder", "编码pts: " + presentationTimeUs);
-
-                    synchronized (hdrInfoLock) {
-                        int count = hdrCounter.get();
-                        if (count > 0) {
-                            count = hdrCounter.decrementAndGet();
-                            Log.i("Encoder", "消费一个hdrInfo, pts: " + info.presentationTimeUs +
-                                    " 剩余：" + count);
-                            if (count == 0) {
-                                hdrInfoLock.notifyAll();
-                            }
-                        }
-                    }
                 }
                 codec.releaseOutputBuffer(index, false);
                 if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
@@ -367,10 +354,15 @@ public class TranscodeRunner {
         }
     }
 
+    private int decodeFrameIndex;
+    private int encodeFrameIndex;
+
     /**
      * 准备解码器
      */
     private void prepareDecoder(VideoOutputConfig outputConfig, AtomicInteger hdrCounter) throws Exception {
+        decodeFrameIndex = 0;
+        encodeFrameIndex = 0;
         String codecName = MediaCodecUtils.findDecoderByFormat(mOriVideoFormat);
         if (TextUtils.isEmpty(codecName)) {
             if (MediaFormat.MIMETYPE_VIDEO_DOLBY_VISION.equals(mOriVideoMime)) {
@@ -422,44 +414,39 @@ public class TranscodeRunner {
             public void onOutputBufferAvailable(@NonNull MediaCodec codec, int index,
                                                 @NonNull MediaCodec.BufferInfo info) {
                 if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0 && (info.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        byte[] hdr10Info = null;
-                        MediaFormat f = codec.getOutputFormat(index);
-                        if (f.containsKey(MediaFormat.KEY_HDR10_PLUS_INFO)) {
-                            ByteBuffer byteBuffer =
-                                    f.getByteBuffer(MediaFormat.KEY_HDR10_PLUS_INFO);
-                            if (byteBuffer != null) {
-                                int len = byteBuffer.limit();
-                                hdr10Info = new byte[len];
-                                byteBuffer.get(hdr10Info, 0, len);
-                            }
-                        }
-                        if (hdr10Info != null) {
-                            synchronized (hdrInfoLock) {
-                                if (hdrCounter.get() != 0) {
-                                    Log.i("Decoder", "有没被消费的hdrInfo，等待消费");
-                                    try {
-                                        hdrInfoLock.wait(1000);
-                                    } catch (InterruptedException e) {
-                                        e.printStackTrace();
+                    MediaFormat f = codec.getOutputFormat(index);
+                    boolean render = info.size > 0;
+                    if (render && Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                        //如果是Android O以下，进行手动丢帧来降低帧率
+                        if (Math.abs(info.presentationTimeUs - mVideoDurationUs) < 100_000L) {
+                            //最后100ms之内，不丢帧
+                        } else {
+                            if (mOriVideoFps > 0 && mConfig.fps < mOriVideoFps) {
+                                //如果相比原视频需要降低帧率，那么需要计算是否需要丢帧
+                                long oriTimeInternal = 1000000000L / mOriVideoFps;
+                                long dstTimeInternal = 1000000000L / mConfig.fps;
+                                long dstTime = encodeFrameIndex * dstTimeInternal;
+                                int indexPre = (int) (dstTime / oriTimeInternal);
+                                int indexAfter = indexPre + 1;
+                                //比较pre和after对应的时间，看取哪个合适
+                                long offset1 = Math.abs(oriTimeInternal * indexPre - dstTime);
+                                long offset2 = Math.abs(oriTimeInternal * indexAfter - dstTime);
+                                if (offset1 <= offset2) {
+                                    //采用indexPre
+                                    if (decodeFrameIndex != indexPre) {
+                                        //和indexPre不等，则进行丢帧
+                                        render = false;
                                     }
-                                }
-
-                                int count = hdrCounter.incrementAndGet();
-                                Log.i("Decoder",
-                                        "新增一个hdrInfo等待消费， pts: " + info.presentationTimeUs +
-                                                " 当前数量: " + count);
-                                Bundle codecParameters = new Bundle();
-                                codecParameters.putByteArray(MediaCodec.PARAMETER_KEY_HDR10_PLUS_INFO,
-                                        hdr10Info);
-                                if (mEncoder != null) {
-                                    mEncoder.setParameters(codecParameters);
+                                } else {
+                                    //采用indexAfter
+                                    if (decodeFrameIndex != indexAfter) {
+                                        //和indexAfter不等，则进行丢帧
+                                        render = false;
+                                    }
                                 }
                             }
                         }
                     }
-
-                    boolean render = info.size > 0;
                     codec.releaseOutputBuffer(index, render);
                     if (render) {
                         // 切换GL线程
@@ -473,7 +460,9 @@ public class TranscodeRunner {
                         mEncoderInputSurface.setPresentationTime(info.presentationTimeUs * 1000);
                         mEncoderInputSurface.swapBuffers();
                         mEncoderInputSurface.makeUnCurrent();
+                        encodeFrameIndex++;
                     }
+                    decodeFrameIndex++;
                     Log.i("Decoder", "解码pts: " + info.presentationTimeUs);
                 } else {
                     codec.releaseOutputBuffer(index, false);

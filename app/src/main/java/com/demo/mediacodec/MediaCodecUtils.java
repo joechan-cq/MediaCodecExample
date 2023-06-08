@@ -155,6 +155,7 @@ public class MediaCodecUtils {
                                                  @NonNull VideoOutputConfig outputConfig) {
         MediaFormat outputFormat;
         String inMimeType = mOriVideoFormat.getString(MediaFormat.KEY_MIME);
+        int inFrameRate = mOriVideoFormat.getInteger(MediaFormat.KEY_FRAME_RATE);
         boolean isH265 = false;
         String mime;
         if (config.h265) {
@@ -190,10 +191,22 @@ public class MediaCodecUtils {
         } else {
             outputFormat.setInteger(MediaFormat.KEY_BIT_RATE, 3 * 1024 * 1024);
         }
-        if (config.fps > 0) {
-            outputFormat.setInteger(MediaFormat.KEY_FRAME_RATE, config.fps);
+
+        //这里的设置是为了让能够获取编码器，实际输出帧率并不受这个控制。而是受render绘制影响
+        if (inFrameRate > 0 && inFrameRate < config.fps) {
+            config.fps = inFrameRate;
+            outputFormat.setInteger(MediaFormat.KEY_FRAME_RATE, inFrameRate);
         } else {
-            outputFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
+            outputFormat.setInteger(MediaFormat.KEY_FRAME_RATE, config.fps);
+        }
+
+        //O及以上可以通过KEY_MAX_FPS_TO_ENCODER来控制输出帧率
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            outputFormat.setFloat(MediaFormat.KEY_MAX_FPS_TO_ENCODER, config.fps);
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            //O以上就有了，Q以上才开放。也有说Android 6也有用
+            //https://github.com/Genymobile/scrcpy/issues/488#issuecomment-567321437
+            outputFormat.setFloat("max-fps-to-encoder", config.fps);
         }
         outputFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
         if (Build.VERSION.SDK_INT > 23 && isH265) {
