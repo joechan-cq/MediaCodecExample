@@ -8,6 +8,7 @@ import android.media.MediaFormat;
 import android.media.MediaMuxer;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.ParcelFileDescriptor;
@@ -20,7 +21,6 @@ import com.demo.mediacodec.MediaCodecUtils;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import androidx.annotation.NonNull;
 
@@ -133,23 +133,22 @@ public class TranscodeRunner {
         mConfig = transcodeConfig;
         new Thread(new Runnable() {
 
-            private void innerPrepareEncoder(VideoOutputConfig outputConfig,
-                                             AtomicInteger hdrCounter) throws Exception {
+            private void innerPrepareEncoder(VideoOutputConfig outputConfig) throws Exception {
                 try {
-                    prepareEncoder(outputConfig, hdrCounter);
+                    prepareEncoder(outputConfig);
                 } catch (NoSupportMediaCodecException e) {
                     if (outputConfig.outputLevel == MediaCodecUtils.OutputLevel.DEFAULT) {
                         //降到NoProfile模式
                         outputConfig.outputLevel = MediaCodecUtils.OutputLevel.NO_PROFILE;
                         e.printStackTrace();
-                        Log.i("TranscodeRunner", "prepareEncoder: 降级至NoProfile模式");
-                        innerPrepareEncoder(outputConfig, hdrCounter);
+                        Log.w("TranscodeRunner", "prepareEncoder: 降级至NoProfile模式");
+                        innerPrepareEncoder(outputConfig);
                     } else if (outputConfig.outputLevel == MediaCodecUtils.OutputLevel.NO_PROFILE) {
                         //降到NoHDR模式
                         outputConfig.outputLevel = MediaCodecUtils.OutputLevel.NO_HDR;
                         e.printStackTrace();
-                        Log.i("TranscodeRunner", "prepareEncoder: 降级至NoHDR模式");
-                        innerPrepareEncoder(outputConfig, hdrCounter);
+                        Log.w("TranscodeRunner", "prepareEncoder: 降级至NoHDR模式");
+                        innerPrepareEncoder(outputConfig);
                     } else {
                         throw e;
                     }
@@ -163,15 +162,14 @@ public class TranscodeRunner {
                     return;
                 }
                 try {
-                    AtomicInteger hdrCounter = new AtomicInteger(0);
                     VideoOutputConfig outputConfig =
                             new VideoOutputConfig(MediaCodecUtils.OutputLevel.DEFAULT);
                     if (!mConfig.keepHdr) {
                         outputConfig.outputLevel = MediaCodecUtils.OutputLevel.NO_HDR;
                     }
                     outputConfig.force8Bit = mConfig.force8Bit;
-                    innerPrepareEncoder(outputConfig, hdrCounter);
-                    prepareDecoder(outputConfig, hdrCounter);
+                    innerPrepareEncoder(outputConfig);
+                    prepareDecoder(outputConfig);
                     _start();
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -274,7 +272,7 @@ public class TranscodeRunner {
     /**
      * 准备编码器
      */
-    private void prepareEncoder(VideoOutputConfig outputConfig, AtomicInteger hdrCounter) throws Exception {
+    private void prepareEncoder(VideoOutputConfig outputConfig) throws Exception {
         mOutputFormat = MediaCodecUtils.createOutputFormat(mContext, mVideoUri, mOriVideoFormat,
                 mConfig, outputConfig);
 
@@ -309,6 +307,10 @@ public class TranscodeRunner {
                     long presentationTimeUs = info.presentationTimeUs;
                     callProgress((int) (presentationTimeUs * 100 / mVideoDurationUs));
                     Log.i("Encoder", "编码pts: " + presentationTimeUs);
+
+                    synchronized (hdrInfoLock) {
+                        hdrInfoLock.notifyAll();
+                    }
                 }
                 codec.releaseOutputBuffer(index, false);
                 if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
@@ -359,11 +361,12 @@ public class TranscodeRunner {
 
     private int decodeFrameIndex;
     private int encodeFrameIndex;
+    private final Object hdrInfoLock = new Object();
 
     /**
      * 准备解码器
      */
-    private void prepareDecoder(VideoOutputConfig outputConfig, AtomicInteger hdrCounter) throws Exception {
+    private void prepareDecoder(VideoOutputConfig outputConfig) throws Exception {
         decodeFrameIndex = 0;
         encodeFrameIndex = 0;
         String codecName = MediaCodecUtils.findDecoderByFormat(mOriVideoFormat);
@@ -450,6 +453,18 @@ public class TranscodeRunner {
                             }
                         }
                     }
+                    byte[] hdr10Info = null;
+                    if (outputConfig.isHDR && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                        MediaFormat format = codec.getOutputFormat();
+                        ByteBuffer hdrByteBuffer = format.getByteBuffer(MediaFormat.KEY_HDR10_PLUS_INFO);
+                        if (hdrByteBuffer != null) {
+                            int limit = hdrByteBuffer.limit();
+                            if (limit > 0) {
+                                hdr10Info = new byte[limit];
+                                hdrByteBuffer.get(hdr10Info);
+                            }
+                        }
+                    }
                     codec.releaseOutputBuffer(index, render);
                     if (render) {
                         // 切换GL线程
@@ -464,9 +479,29 @@ public class TranscodeRunner {
                         mEncoderInputSurface.swapBuffers();
                         mEncoderInputSurface.makeUnCurrent();
                         encodeFrameIndex++;
+
+                        if (hdr10Info != null) {
+                            //hdr10+的元数据需要手动写给编码器
+                            Bundle codecParameters = new Bundle();
+                            codecParameters.putByteArray(MediaCodec.PARAMETER_KEY_HDR10_PLUS_INFO, hdr10Info);
+                            if (mEncoder != null) {
+                                mEncoder.setParameters(codecParameters);
+                            }
+                        }
                     }
                     decodeFrameIndex++;
                     Log.i("Decoder", "解码pts: " + info.presentationTimeUs);
+                    if (hdr10Info != null) {
+                        //因为是解码和编码是异步的，上面对编码器设置了Hdr10Info后，会使得编码器输出的一帧带上这个数据，
+                        //但如果解码速度快过编码速度，就会出现Hdr10Info绑定的帧不正确的情况。所以这里有意地降低一下解码速度。
+                        synchronized (hdrInfoLock) {
+                            try {
+                                hdrInfoLock.wait(100);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
                 } else {
                     codec.releaseOutputBuffer(index, false);
                     if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {

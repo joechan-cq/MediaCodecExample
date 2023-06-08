@@ -254,8 +254,15 @@ public class DecodePlayActivity extends BaseActivity {
                     if (System.nanoTime() - startTime < bufferInfo.presentationTimeUs * 1000L) {
                         SystemClock.sleep((bufferInfo.presentationTimeUs - (System.nanoTime() - startTime) / 1000) / 1000);
                     }
+                    if (isFinishing() || isDestroyed()) {
+                        break;
+                    }
                     //这里直接将解码后的数据刷到Surface即可
-                    decoder.releaseOutputBuffer(outIndex, true);
+                    try {
+                        decoder.releaseOutputBuffer(outIndex, true);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
 
                 //获取接下来的轨道数据
