@@ -209,6 +209,12 @@ public class MediaCodecUtils {
             outputFormat.setFloat("max-fps-to-encoder", config.fps);
         }
         outputFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            //FIXME 开启B帧，能够一定程度提高清晰度，但不是所有设备都支持B帧，可能会因此报错。
+            outputFormat.setInteger(MediaFormat.KEY_MAX_B_FRAMES, 2);
+        }
+
         if (Build.VERSION.SDK_INT > 23 && isH265) {
             //不去生成H264的HDR视频
             //设置Color相关参数，使其尽量保证HDR视频转码后仍然是HDR视频
