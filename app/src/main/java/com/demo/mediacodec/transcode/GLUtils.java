@@ -68,6 +68,24 @@ public class GLUtils {
             "    vTextureCoord = (uSTMatrix * aTextureCoord).xy;                   \n" +
             "}                                                                     \n";
 
+//    public static final String YUV_FRAGMENT_SHADER = "" +
+//            "#version 300 es                                                       \n" +
+//            "#extension GL_EXT_YUV_target : require                                \n" +
+//            "#extension GL_OES_EGL_image_external : require                        \n" +
+//            "#extension GL_OES_EGL_image_external_essl3 : require                  \n" +
+//            "precision highp float;                                                \n" +
+//            "                                                                      \n" +
+//            "uniform samplerExternalOES sTexture;                                  \n" +
+//            "                                                                      \n" +
+//            "in vec2 vTextureCoord;                                                \n" +
+//            "layout (yuv) out vec4 color;                                          \n" +
+//            "                                                                      \n" +
+//            "void main()                                                           \n" +
+//            "{                                                                     \n" +
+//            "    vec3 rgbColor = texture(sTexture, vTextureCoord).rgb;             \n" +
+//            "    color = vec4(rgb_2_yuv(rgbColor, itu_601_full_range), 1.0);       \n" +
+//            "}                                                                     \n";
+
     public static final String YUV_FRAGMENT_SHADER = "" +
             "#version 300 es                                                       \n" +
             "#extension GL_EXT_YUV_target : require                                \n" +
@@ -75,15 +93,14 @@ public class GLUtils {
             "#extension GL_OES_EGL_image_external_essl3 : require                  \n" +
             "precision highp float;                                                \n" +
             "                                                                      \n" +
-            "uniform samplerExternalOES sTexture;                                  \n" +
+            "uniform __samplerExternal2DY2YEXT sTexture;                           \n" +
             "                                                                      \n" +
             "in vec2 vTextureCoord;                                                \n" +
             "layout (yuv) out vec4 color;                                          \n" +
             "                                                                      \n" +
             "void main()                                                           \n" +
             "{                                                                     \n" +
-            "    vec3 rgbColor = texture(sTexture, vTextureCoord).rgb;             \n" +
-            "    color = vec4(rgb_2_yuv(rgbColor, itu_601_full_range), 1.0);       \n" +
+            "    color = texture(sTexture, vTextureCoord);                         \n" +
             "}                                                                     \n";
 
     //endregion
