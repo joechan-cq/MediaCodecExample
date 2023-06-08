@@ -8,6 +8,7 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.demo.mediacodec.BaseActivity;
 import com.demo.mediacodec.R;
@@ -38,7 +39,7 @@ public class TranscodeActivity extends BaseActivity implements TranscodeRunner.O
     private TranscodeRunner transcodeRunner;
     private ProgressDialog mProgressDialog;
 
-    private MaterialCheckBox mH265Cb, mForce8BitCb;
+    private MaterialCheckBox mH265Cb, mKeepHdrCb, mForce8BitCb;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -51,6 +52,7 @@ public class TranscodeActivity extends BaseActivity implements TranscodeRunner.O
 
         mErrorTv = findViewById(R.id.tv_errorInfo);
         mH265Cb = findViewById(R.id.cb_h265);
+        mKeepHdrCb = findViewById(R.id.cb_keep_hdr);
         mForce8BitCb = findViewById(R.id.cb_force_8_bit);
         mVideoInfoTv = findViewById(R.id.tv_ori_video_info);
         mDstWidthEdt = findViewById(R.id.edt_dst_width);
@@ -90,6 +92,10 @@ public class TranscodeActivity extends BaseActivity implements TranscodeRunner.O
             config.outHeight = Integer.parseInt(mDstHeightEdt.getEditableText().toString());
             config.bitrate = Integer.parseInt(mDstBitrateEdt.getEditableText().toString());
             config.fps = Integer.parseInt(mDstFpsEdt.getEditableText().toString());
+            config.keepHdr = mKeepHdrCb.isChecked();
+            if (config.keepHdr && !config.h265) {
+                Toast.makeText(this, "仅支持H265编码的HDR效果", Toast.LENGTH_SHORT).show();
+            }
             config.force8Bit = mForce8BitCb.isChecked();
             try {
                 if (config.dstPath.exists()) {
@@ -128,6 +134,21 @@ public class TranscodeActivity extends BaseActivity implements TranscodeRunner.O
             }
             mDstWidthEdt.setText(String.valueOf(width));
             mDstHeightEdt.setText(String.valueOf(height));
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                int colorStandard = videoFormat.getInteger(MediaFormat.KEY_COLOR_STANDARD);
+                if (colorStandard == MediaFormat.COLOR_STANDARD_BT2020) {
+                    mH265Cb.setChecked(true);
+                    mKeepHdrCb.setEnabled(true);
+                    mKeepHdrCb.setChecked(true);
+                } else {
+                    mH265Cb.setChecked(false);
+                    mKeepHdrCb.setEnabled(false);
+                    mKeepHdrCb.setChecked(false);
+                }
+            } else {
+                mKeepHdrCb.setEnabled(false);
+                mKeepHdrCb.setChecked(false);
+            }
         });
     }
 

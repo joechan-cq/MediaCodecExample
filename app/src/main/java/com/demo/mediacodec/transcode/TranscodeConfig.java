@@ -14,4 +14,5 @@ public class TranscodeConfig {
     public int bitrate;
     public int fps;
     public boolean force8Bit;
+    public boolean keepHdr;
 }
