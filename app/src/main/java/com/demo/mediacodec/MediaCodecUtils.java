@@ -269,10 +269,14 @@ public class MediaCodecUtils {
             }
         }
 
-        if (isH265 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            //FIXME 开启B帧，能够一定程度提高清晰度，但不是所有设备都支持B帧，可能会因此报错。
-            outputFormat.setInteger(MediaFormat.KEY_MAX_B_FRAMES, 1);
-        }
+//        if (isH265) {
+//            //FIXME 开启B帧，能够一定程度提高清晰度，但不是所有设备都支持B帧，可能会因此报错。
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+//                outputFormat.setInteger(MediaFormat.KEY_MAX_B_FRAMES, 1);
+//            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//                outputFormat.setInteger(MediaFormat.KEY_LATENCY, 1);
+//            }
+//        }
 
         return outputFormat;
     }
