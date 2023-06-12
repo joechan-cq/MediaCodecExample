@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -52,6 +53,15 @@ public class TranscodeActivity extends BaseActivity implements TranscodeRunner.O
 
         mErrorTv = findViewById(R.id.tv_errorInfo);
         mH265Cb = findViewById(R.id.cb_h265);
+        mH265Cb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (!isChecked) {
+                    mKeepHdrCb.setChecked(false);
+                    mForce8BitCb.setChecked(false);
+                }
+            }
+        });
         mKeepHdrCb = findViewById(R.id.cb_keep_hdr);
         mForce8BitCb = findViewById(R.id.cb_force_8_bit);
         mVideoInfoTv = findViewById(R.id.tv_ori_video_info);
@@ -134,7 +144,7 @@ public class TranscodeActivity extends BaseActivity implements TranscodeRunner.O
             }
             mDstWidthEdt.setText(String.valueOf(width));
             mDstHeightEdt.setText(String.valueOf(height));
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N && videoFormat.containsKey(MediaFormat.KEY_COLOR_STANDARD)) {
                 int colorStandard = videoFormat.getInteger(MediaFormat.KEY_COLOR_STANDARD);
                 if (colorStandard == MediaFormat.COLOR_STANDARD_BT2020) {
                     mH265Cb.setChecked(true);
@@ -144,10 +154,14 @@ public class TranscodeActivity extends BaseActivity implements TranscodeRunner.O
                     mH265Cb.setChecked(false);
                     mKeepHdrCb.setEnabled(false);
                     mKeepHdrCb.setChecked(false);
+                    mForce8BitCb.setEnabled(false);
+                    mForce8BitCb.setChecked(false);
                 }
             } else {
                 mKeepHdrCb.setEnabled(false);
                 mKeepHdrCb.setChecked(false);
+                mForce8BitCb.setEnabled(false);
+                mForce8BitCb.setChecked(false);
             }
         });
     }
