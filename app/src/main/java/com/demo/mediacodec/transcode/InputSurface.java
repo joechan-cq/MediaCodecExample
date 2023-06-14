@@ -292,7 +292,7 @@ public class InputSurface {
                 GLUtils.EGL_YUV_NUMBER_OF_PLANES_EXT, 2,
                 GLUtils.EGL_YUV_SUBSAMPLE_EXT, GLUtils.EGL_YUV_SUBSAMPLE_4_2_0_EXT,
                 GLUtils.EGL_YUV_DEPTH_RANGE_EXT, GLUtils.EGL_YUV_DEPTH_RANGE_LIMITED_EXT,
-                GLUtils.EGL_YUV_CSC_STANDARD_EXT, GLUtils.EGL_YUV_CSC_STANDARD_601_EXT,
+                GLUtils.EGL_YUV_CSC_STANDARD_EXT, GLUtils.EGL_YUV_CSC_STANDARD_2020_EXT,
                 GLUtils.EGL_YUV_PLANE_BPP_EXT, GLUtils.EGL_YUV_PLANE_BPP_10_EXT,
                 EGL14.EGL_NONE
         };
