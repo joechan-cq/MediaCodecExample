@@ -61,8 +61,11 @@ public class TranscodeRunner {
 
     private String mOriVideoMime;
     private int mOriVideoWidth, mOriVideoHeight;
+    private int mOriVideoRotation;
     private int mOriVideoFps;
     private long mVideoDurationUs;
+
+    private boolean mMaybeSwitchWH;
 
     private OnTranscodeListener listener;
 
@@ -266,6 +269,15 @@ public class TranscodeRunner {
         mOriVideoWidth = mOriVideoFormat.getInteger(MediaFormat.KEY_WIDTH);
         mOriVideoHeight = mOriVideoFormat.getInteger(MediaFormat.KEY_HEIGHT);
         mOriVideoFps = mOriVideoFormat.getInteger(MediaFormat.KEY_FRAME_RATE);
+        mMaybeSwitchWH = false;
+        if (mOriVideoFormat.containsKey(MediaFormat.KEY_ROTATION)) {
+            mOriVideoRotation = mOriVideoFormat.getInteger(MediaFormat.KEY_ROTATION);
+        } else {
+            mOriVideoRotation = 0;
+            if (mOriVideoWidth < mOriVideoHeight) {
+                mMaybeSwitchWH = true;
+            }
+        }
         mVideoDurationUs = mOriVideoFormat.getLong(MediaFormat.KEY_DURATION);
     }
 
@@ -387,6 +399,14 @@ public class TranscodeRunner {
                     mOriVideoFormat.removeKey(MediaFormat.KEY_LEVEL);
                 }
                 codecName = MediaCodecUtils.findDecoderByFormat(mOriVideoFormat);
+
+                if (TextUtils.isEmpty(codecName)) {
+                    if (mMaybeSwitchWH) {
+                        //Oppo有某些SB的设备，竖屏拍摄的视频，不写rotation到metadata中去，导致这里因为解码器的宽高限制，无法获取到解码器.
+                        MediaFormat simpleFormat = MediaFormat.createVideoFormat(mOriVideoMime, mOriVideoHeight, mOriVideoWidth);
+                        codecName = MediaCodecUtils.findDecoderByFormat(simpleFormat);
+                    }
+                }
             } else {
                 throw new RuntimeException("没有找到合适的解码器! videoFormat:" + mOriVideoFormat);
             }

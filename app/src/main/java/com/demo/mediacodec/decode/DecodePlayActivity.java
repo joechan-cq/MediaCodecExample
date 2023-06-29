@@ -157,6 +157,7 @@ public class DecodePlayActivity extends BaseActivity {
         if (mVideoFormat == null) {
             return;
         }
+        boolean maybeSwitchWH = false;
 
         String mime = mVideoFormat.getString(MediaFormat.KEY_MIME);
         int width = mVideoFormat.getInteger(MediaFormat.KEY_WIDTH);
@@ -166,6 +167,9 @@ public class DecodePlayActivity extends BaseActivity {
             rotation = mVideoFormat.getInteger(MediaFormat.KEY_ROTATION);
         } else {
             rotation = 0;
+            if (width < height) {
+                maybeSwitchWH = true;
+            }
         }
         int maxCache;
         if (mVideoFormat.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
@@ -190,6 +194,8 @@ public class DecodePlayActivity extends BaseActivity {
 
         String codecName = MediaCodecUtils.findDecoderByFormat(mVideoFormat);
         if (TextUtils.isEmpty(codecName)) {
+            log.append("prepareDecoder: 完整format没有找到解码器！\n");
+            log.append("prepareDecoder: 尝试降级！\n");
             if (MediaFormat.MIMETYPE_VIDEO_DOLBY_VISION.equals(mime)) {
                 //如果是杜比视界，那么尝试用HEVC的解码器去解
                 mVideoFormat.setString(MediaFormat.KEY_MIME, MediaFormat.MIMETYPE_VIDEO_HEVC);
@@ -201,15 +207,28 @@ public class DecodePlayActivity extends BaseActivity {
                 codecName = MediaCodecUtils.findDecoderByFormat(mVideoFormat);
             } else if (MediaFormat.MIMETYPE_VIDEO_HEVC.equals(mime)) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    log.append("prepareDecoder: 移除profile和level\n");
                     //HEVC的话，尝试移除Profile和Level
                     mVideoFormat.removeKey(MediaFormat.KEY_PROFILE);
                     mVideoFormat.removeKey(MediaFormat.KEY_LEVEL);
                 }
                 codecName = MediaCodecUtils.findDecoderByFormat(mVideoFormat);
+                if (TextUtils.isEmpty(codecName)) {
+                    log.append("prepareDecoder: 移除profile、level后format没有找到解码器！:").append(mVideoFormat).append("\n");
+                    if (maybeSwitchWH) {
+                        //Oppo有某些SB的设备，竖屏拍摄的视频，不写rotation到metadata中去，导致这里因为解码器的宽高限制，无法获取到解码器.
+                        log.append("prepareDecoder: 尝试交换Width和Height\n");
+                        MediaFormat simpleFormat = MediaFormat.createVideoFormat(mime, height, width);
+                        codecName = MediaCodecUtils.findDecoderByFormat(simpleFormat);
+                        if (TextUtils.isEmpty(codecName)) {
+                            log.append("prepareDecoder: 交换width、height也没有找到解码器！").append(simpleFormat).append("\n");
+                        }
+                    }
+                }
             }
         }
         if (TextUtils.isEmpty(codecName)) {
-            log.append("没有找到解码器!").append("\n");
+            log.append("最终没有找到解码器!").append("\n");
             setDebugLog(log.toString());
             return;
         }
@@ -281,9 +300,11 @@ public class DecodePlayActivity extends BaseActivity {
                 mMediaExtractor.release();
             }
             log.append("解码完成，释放资源！").append("\n");
-            setDebugLog(log.toString());
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
+            log.append("解码过程报错：" + e.getMessage());
+        } finally {
+            setDebugLog(log.toString());
         }
     }
 

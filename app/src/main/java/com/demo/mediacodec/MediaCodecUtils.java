@@ -41,7 +41,7 @@ public class MediaCodecUtils {
 
     @Nullable
     public static String findDecoderByFormat(MediaFormat mediaFormat, boolean onlySoftware) {
-        MediaCodecList codecList = new MediaCodecList(MediaCodecList.ALL_CODECS);
+        MediaCodecList codecList = new MediaCodecList(MediaCodecList.REGULAR_CODECS);
         if (!onlySoftware) {
             return codecList.findDecoderForFormat(mediaFormat);
         } else {
@@ -74,7 +74,7 @@ public class MediaCodecUtils {
 
     @Nullable
     public static String findEncoderByFormat(MediaFormat mediaFormat, boolean onlySoftware) {
-        MediaCodecList codecList = new MediaCodecList(MediaCodecList.ALL_CODECS);
+        MediaCodecList codecList = new MediaCodecList(MediaCodecList.REGULAR_CODECS);
         if (!onlySoftware) {
             return codecList.findEncoderForFormat(mediaFormat);
         } else {
