@@ -290,8 +290,18 @@ public class TranscodeRunner {
 
         String codecName = MediaCodecUtils.findEncoderByFormat(mOutputFormat);
         if (TextUtils.isEmpty(codecName)) {
+            if (mConfig.outWidth < mConfig.outHeight) {
+                //有些设备下面判断是否支持写的不够好，这里主动交换一下width和height，看能否获取出编码器
+                MediaFormat tempF = MediaCodecUtils.createOutputFormat(mContext, mVideoUri
+                        , mOriVideoFormat, mConfig, outputConfig);
+                tempF.setInteger(MediaFormat.KEY_WIDTH, mConfig.outHeight);
+                tempF.setInteger(MediaFormat.KEY_HEIGHT, mConfig.outWidth);
+                codecName = MediaCodecUtils.findEncoderByFormat(tempF);
+            }
+        }
+        if (TextUtils.isEmpty(codecName)) {
             throw new NoSupportMediaCodecException("没有找到合适的编码器! outputFormat:" + mOutputFormat,
-                    outputConfig.outputLevel);
+                        outputConfig.outputLevel);
         }
         mEncodeCodecThread = new HandlerThread("EncodeCodecThread");
         mEncodeCodecThread.start();
