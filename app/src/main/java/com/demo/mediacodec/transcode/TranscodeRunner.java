@@ -402,7 +402,8 @@ public class TranscodeRunner {
 
                 if (TextUtils.isEmpty(codecName)) {
                     if (mMaybeSwitchWH) {
-                        //Oppo有某些SB的设备，竖屏拍摄的视频，不写rotation到metadata中去，导致这里因为解码器的宽高限制，无法获取到解码器.
+                        //Oppo有某些设备，竖屏拍摄的视频，不写rotation到metadata中，而是直接交换宽高（一般竖屏视频是1920x1080+90度，而这些特殊视频是1080x1920+0），
+                        //导致这里因为解码器的宽高限制，无法获取到解码器.
                         MediaFormat simpleFormat = MediaFormat.createVideoFormat(mOriVideoMime, mOriVideoHeight, mOriVideoWidth);
                         codecName = MediaCodecUtils.findDecoderByFormat(simpleFormat);
                     }

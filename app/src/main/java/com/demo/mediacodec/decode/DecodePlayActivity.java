@@ -216,7 +216,8 @@ public class DecodePlayActivity extends BaseActivity {
                 if (TextUtils.isEmpty(codecName)) {
                     log.append("prepareDecoder: 移除profile、level后format没有找到解码器！:").append(mVideoFormat).append("\n");
                     if (maybeSwitchWH) {
-                        //Oppo有某些SB的设备，竖屏拍摄的视频，不写rotation到metadata中去，导致这里因为解码器的宽高限制，无法获取到解码器.
+                        //Oppo有某些设备，竖屏拍摄的视频，不写rotation到metadata中，而是直接交换宽高（一般竖屏视频是1920x1080+90度，而这些特殊视频是1080x1920+0），
+                        //导致这里因为解码器的宽高限制，无法获取到解码器.
                         log.append("prepareDecoder: 尝试交换Width和Height\n");
                         MediaFormat simpleFormat = MediaFormat.createVideoFormat(mime, height, width);
                         codecName = MediaCodecUtils.findDecoderByFormat(simpleFormat);
