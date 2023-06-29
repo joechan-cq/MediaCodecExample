@@ -150,12 +150,13 @@ public class MediaCodecUtils {
 
     @NonNull
     public static MediaFormat createOutputFormat(@NonNull Context ctx, @NonNull Uri srcUri,
-                                                 @NonNull MediaFormat mOriVideoFormat,
+                                                 @NonNull MediaFormat inputVideoFormat,
                                                  @NonNull TranscodeConfig config,
                                                  @NonNull VideoOutputConfig outputConfig) {
         MediaFormat outputFormat;
-        String inMimeType = mOriVideoFormat.getString(MediaFormat.KEY_MIME);
-        int inFrameRate = mOriVideoFormat.getInteger(MediaFormat.KEY_FRAME_RATE);
+        String inMimeType = inputVideoFormat.getString(MediaFormat.KEY_MIME);
+        int inFrameRate = inputVideoFormat.getInteger(MediaFormat.KEY_FRAME_RATE);
+
         boolean isH265 = false;
         String mime;
         if (config.h265) {
@@ -214,27 +215,27 @@ public class MediaCodecUtils {
             //不去生成H264的HDR视频
             //设置Color相关参数，使其尽量保证HDR视频转码后仍然是HDR视频
             int colorTransfer = 0;
-            int colorStandard = mOriVideoFormat.getInteger(MediaFormat.KEY_COLOR_STANDARD);
+            int colorStandard = inputVideoFormat.getInteger(MediaFormat.KEY_COLOR_STANDARD);
             outputConfig.isHDR =
                     outputConfig.outputLevel != OutputLevel.NO_HDR && colorStandard == MediaFormat.COLOR_STANDARD_BT2020;
             if (outputConfig.isHDR) {
                 outputConfig.isHDRVivid = MediaCodecUtils.isHDRVivid(ctx, null, srcUri, null);
             }
             if (outputConfig.isHDR) {
-                if (mOriVideoFormat.containsKey(MediaFormat.KEY_COLOR_STANDARD)) {
+                if (inputVideoFormat.containsKey(MediaFormat.KEY_COLOR_STANDARD)) {
                     outputFormat.setInteger(MediaFormat.KEY_COLOR_STANDARD, colorStandard);
                 }
-                if (mOriVideoFormat.containsKey(MediaFormat.KEY_COLOR_TRANSFER)) {
-                    colorTransfer = mOriVideoFormat.getInteger(MediaFormat.KEY_COLOR_TRANSFER);
+                if (inputVideoFormat.containsKey(MediaFormat.KEY_COLOR_TRANSFER)) {
+                    colorTransfer = inputVideoFormat.getInteger(MediaFormat.KEY_COLOR_TRANSFER);
                     outputFormat.setInteger(MediaFormat.KEY_COLOR_TRANSFER, colorTransfer);
                 }
-                if (mOriVideoFormat.containsKey(MediaFormat.KEY_COLOR_RANGE)) {
+                if (inputVideoFormat.containsKey(MediaFormat.KEY_COLOR_RANGE)) {
                     outputFormat.setInteger(MediaFormat.KEY_COLOR_RANGE,
-                            mOriVideoFormat.getInteger(MediaFormat.KEY_COLOR_RANGE));
+                            inputVideoFormat.getInteger(MediaFormat.KEY_COLOR_RANGE));
                 }
-                if (mOriVideoFormat.containsKey(MediaFormat.KEY_HDR_STATIC_INFO)) {
+                if (inputVideoFormat.containsKey(MediaFormat.KEY_HDR_STATIC_INFO)) {
                     outputFormat.setByteBuffer(MediaFormat.KEY_HDR_STATIC_INFO,
-                            mOriVideoFormat.getByteBuffer(MediaFormat.KEY_HDR_STATIC_INFO));
+                            inputVideoFormat.getByteBuffer(MediaFormat.KEY_HDR_STATIC_INFO));
                 }
                 if (outputConfig.outputLevel != OutputLevel.NO_PROFILE) {
                     if (outputConfig.isDolby) {
