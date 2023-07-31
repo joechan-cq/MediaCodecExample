@@ -215,7 +215,10 @@ public class MediaCodecUtils {
             //不去生成H264的HDR视频
             //设置Color相关参数，使其尽量保证HDR视频转码后仍然是HDR视频
             int colorTransfer = 0;
-            int colorStandard = inputVideoFormat.getInteger(MediaFormat.KEY_COLOR_STANDARD);
+            int colorStandard = MediaFormat.COLOR_STANDARD_BT709;
+            if (inputVideoFormat.containsKey(MediaFormat.KEY_COLOR_STANDARD)) {
+                colorStandard = inputVideoFormat.getInteger(MediaFormat.KEY_COLOR_STANDARD);
+            }
             outputConfig.isHDR =
                     outputConfig.outputLevel != OutputLevel.NO_HDR && colorStandard == MediaFormat.COLOR_STANDARD_BT2020;
             if (outputConfig.isHDR) {

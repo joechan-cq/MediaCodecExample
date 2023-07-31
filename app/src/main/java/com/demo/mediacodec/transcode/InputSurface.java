@@ -66,27 +66,27 @@ public class InputSurface {
             config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGB888;
             Log.i("InputSurface", "使用RGBA8888");
         } else {
-            if (config.isDolby) {
-                //杜比视界
-                createRGBA1010102EGLContextAndWindow();
-                config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGBA1010102;
-                Log.i("InputSurface", "使用RGBA1010102");
-            } else if (config.isHDRVivid) {
-                //vivid
-                createYUVP10EGLContextAndWindow();
-                config.eglColorSpace = MediaCodecUtils.EGLColorSpace.YUVP10;
-                Log.i("InputSurface", "使用YUVP10");
-            } else {
-                //不是杜比视界、不是hdr vivid。
-                try {
+            try {
+                if (config.isDolby) {
+                    //杜比视界
+                    Log.i("InputSurface", "使用RGBA1010102");
                     createRGBA1010102EGLContextAndWindow();
                     config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGBA1010102;
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    Log.i("InputSurface", "eglSetup: RGBA1010102初始化失败，尝试使用RGBA8888");
-                    createSdrEGLContextAndWindow();
-                    config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGB888;
+                } else if (config.isHDRVivid) {
+                    //vivid
+                    Log.i("InputSurface", "使用YUVP10");
+                    createYUVP10EGLContextAndWindow();
+                    config.eglColorSpace = MediaCodecUtils.EGLColorSpace.YUVP10;
+                } else {
+                    //不是杜比视界、不是hdr vivid。
+                    Log.i("InputSurface", "不是杜比，也不是Vivid，使用RGBA1010102");
+                    createRGBA1010102EGLContextAndWindow();
+                    config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGBA1010102;
                 }
+            } catch (Exception e) {
+                Log.i("InputSurface", "eglSetup: 10bit位深EGL初始化失败，尝试使用RGBA8888");
+                createSdrEGLContextAndWindow();
+                config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGB888;
             }
         }
 
