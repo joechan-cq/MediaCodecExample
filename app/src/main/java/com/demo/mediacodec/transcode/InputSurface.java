@@ -84,6 +84,7 @@ public class InputSurface {
                     config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGBA1010102;
                 }
             } catch (Exception e) {
+                e.printStackTrace();
                 Log.i("InputSurface", "eglSetup: 10bit位深EGL初始化失败，尝试使用RGBA8888");
                 createSdrEGLContextAndWindow();
                 config.eglColorSpace = MediaCodecUtils.EGLColorSpace.RGB888;
@@ -254,7 +255,6 @@ public class InputSurface {
                 EGL14.EGL_BLUE_SIZE, 10,
                 EGL14.EGL_ALPHA_SIZE, 2,
                 EGL14.EGL_RENDERABLE_TYPE, EGLExt.EGL_OPENGL_ES3_BIT_KHR,
-                EGLExt.EGL_RECORDABLE_ANDROID, 1,
                 EGL14.EGL_NONE
         };
         int[] numConfigs = new int[1];
