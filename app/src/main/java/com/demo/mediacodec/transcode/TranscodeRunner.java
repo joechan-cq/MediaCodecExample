@@ -435,12 +435,22 @@ public class TranscodeRunner {
 
             @Override
             public void onInputBufferAvailable(@NonNull MediaCodec codec, int index) {
-                ByteBuffer inputBuffer = codec.getInputBuffer(index);
+                ByteBuffer inputBuffer = null;
+                try {
+                    inputBuffer = codec.getInputBuffer(index);
+                } catch (Exception ignore) {
+                }
+                if (inputBuffer == null) {
+                    return;
+                }
                 int sampleSize = mMediaExtractor.readSampleData(inputBuffer, 0);
                 if (sampleSize > 0) {
                     long sampleTime = mMediaExtractor.getSampleTime();
                     int flags = mMediaExtractor.getSampleFlags();
-                    codec.queueInputBuffer(index, 0, sampleSize, sampleTime, flags);
+                    try {
+                        codec.queueInputBuffer(index, 0, sampleSize, sampleTime, flags);
+                    } catch (Exception ignore) {
+                    }
                     mMediaExtractor.advance();
                 } else {
                     codec.queueInputBuffer(index, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
@@ -498,32 +508,35 @@ public class TranscodeRunner {
                         } catch (Exception ignore) {
                         }
                     }
-                    codec.releaseOutputBuffer(index, render);
-                    if (render) {
-                        // 切换GL线程
-                        // 为什么不用mDecoderOutputSurface.makeCurrent()
-                        // ?因为OutputSurface内部没有创建EGLContext等参数
-                        mEncoderInputSurface.makeCurrent();
-                        //往OutputSurface上绘制图像
-                        mDecoderOutputSurface.awaitNewImage();
-                        mDecoderOutputSurface.drawImage();
-                        //上屏
-                        mEncoderInputSurface.setPresentationTime(info.presentationTimeUs * 1000);
-                        mEncoderInputSurface.swapBuffers();
-                        mEncoderInputSurface.makeUnCurrent();
-                        encodeFrameIndex++;
+                    try {
+                        codec.releaseOutputBuffer(index, render);
+                        if (render) {
+                            // 切换GL线程
+                            // 为什么不用mDecoderOutputSurface.makeCurrent()
+                            // ?因为OutputSurface内部没有创建EGLContext等参数
+                            mEncoderInputSurface.makeCurrent();
+                            //往OutputSurface上绘制图像
+                            mDecoderOutputSurface.awaitNewImage();
+                            mDecoderOutputSurface.drawImage();
+                            //上屏
+                            mEncoderInputSurface.setPresentationTime(info.presentationTimeUs * 1000);
+                            mEncoderInputSurface.swapBuffers();
+                            mEncoderInputSurface.makeUnCurrent();
+                            encodeFrameIndex++;
 
-                        if (hdr10Info != null) {
-                            //hdr10+的元数据需要手动写给编码器
-                            Bundle codecParameters = new Bundle();
-                            codecParameters.putByteArray(MediaCodec.PARAMETER_KEY_HDR10_PLUS_INFO, hdr10Info);
-                            if (mEncoder != null) {
-                                mEncoder.setParameters(codecParameters);
+                            if (hdr10Info != null) {
+                                //hdr10+的元数据需要手动写给编码器
+                                Bundle codecParameters = new Bundle();
+                                codecParameters.putByteArray(MediaCodec.PARAMETER_KEY_HDR10_PLUS_INFO, hdr10Info);
+                                if (mEncoder != null) {
+                                    mEncoder.setParameters(codecParameters);
+                                }
                             }
                         }
+                        decodeFrameIndex++;
+                        Log.i("Decoder", "解码pts: " + info.presentationTimeUs);
+                    } catch (Exception ignore) {
                     }
-                    decodeFrameIndex++;
-                    Log.i("Decoder", "解码pts: " + info.presentationTimeUs);
                     if (hdr10Info != null) {
                         //因为是解码和编码是异步的，上面对编码器设置了Hdr10Info后，会使得编码器输出的一帧带上这个数据，
                         //但如果解码速度快过编码速度，就会出现Hdr10Info绑定的帧不正确的情况。所以这里有意地降低一下解码速度。
