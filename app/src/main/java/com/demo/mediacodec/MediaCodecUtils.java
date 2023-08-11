@@ -250,6 +250,15 @@ public class MediaCodecUtils {
                             outputFormat.setInteger(MediaFormat.KEY_PROFILE,
                                     MediaCodecInfo.CodecProfileLevel.DolbyVisionProfileDvheStn);
                         }
+                        if (!outputFormat.containsKey(MediaFormat.KEY_COLOR_TRANSFER)) {
+                            outputFormat.setInteger(MediaFormat.KEY_COLOR_TRANSFER, MediaFormat.COLOR_TRANSFER_HLG);
+                        }
+                        if (!outputFormat.containsKey(MediaFormat.KEY_COLOR_RANGE)) {
+                            outputFormat.setInteger(MediaFormat.KEY_COLOR_RANGE, MediaFormat.COLOR_RANGE_LIMITED);
+                        }
+
+                        int level = getDolbyVisionLevel(config.fps, Math.max(config.outWidth, config.outHeight));
+                        outputFormat.setInteger(MediaFormat.KEY_LEVEL, level);
                     } else {
                         outputFormat.setFeatureEnabled("hdr-editing", true);
                         switch (colorTransfer) {
@@ -283,5 +292,33 @@ public class MediaCodecUtils {
 //        }
 
         return outputFormat;
+    }
+
+    private static int getDolbyVisionLevel(int fps, int maxSize) {
+        int level = 0;
+        if (maxSize <= 1920) {
+            if (fps <= 24) {
+                level = MediaCodecInfo.CodecProfileLevel.DolbyVisionLevelFhd24;
+            } else if (fps > 24 && fps <= 30) {
+                level = MediaCodecInfo.CodecProfileLevel.DolbyVisionLevelFhd30;
+            } else if (fps > 30 && fps <= 60) {
+                level = MediaCodecInfo.CodecProfileLevel.DolbyVisionLevelFhd60;
+            } else {
+                level = MediaCodecInfo.CodecProfileLevel.DolbyVisionLevelFhd60;
+            }
+        } else if (maxSize <= 3840) {
+            if (fps <= 24) {
+                level = MediaCodecInfo.CodecProfileLevel.DolbyVisionLevelUhd24;
+            } else if (fps > 24 && fps <= 30) {
+                level = MediaCodecInfo.CodecProfileLevel.DolbyVisionLevelUhd30;
+            } else if (fps > 30 && fps <= 48) {
+                level = MediaCodecInfo.CodecProfileLevel.DolbyVisionLevelUhd48;
+            } else if (fps > 48 && fps <= 60) {
+                level = MediaCodecInfo.CodecProfileLevel.DolbyVisionLevelUhd60;
+            } else {
+                level = MediaCodecInfo.CodecProfileLevel.DolbyVisionLevelUhd60;
+            }
+        }
+        return level;
     }
 }
