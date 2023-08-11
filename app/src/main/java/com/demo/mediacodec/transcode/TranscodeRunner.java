@@ -451,7 +451,6 @@ public class TranscodeRunner {
             public void onOutputBufferAvailable(@NonNull MediaCodec codec, int index,
                                                 @NonNull MediaCodec.BufferInfo info) {
                 if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0 && (info.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0) {
-                    MediaFormat f = codec.getOutputFormat(index);
                     boolean render = info.size > 0;
                     if (render && Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
                         //如果是Android O以下，进行手动丢帧来降低帧率
@@ -486,14 +485,17 @@ public class TranscodeRunner {
                     }
                     byte[] hdr10Info = null;
                     if (outputConfig.isHDR && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                        MediaFormat format = codec.getOutputFormat();
-                        ByteBuffer hdrByteBuffer = format.getByteBuffer(MediaFormat.KEY_HDR10_PLUS_INFO);
-                        if (hdrByteBuffer != null) {
-                            int limit = hdrByteBuffer.limit();
-                            if (limit > 0) {
-                                hdr10Info = new byte[limit];
-                                hdrByteBuffer.get(hdr10Info);
+                        try {
+                            MediaFormat format = codec.getOutputFormat();
+                            ByteBuffer hdrByteBuffer = format.getByteBuffer(MediaFormat.KEY_HDR10_PLUS_INFO);
+                            if (hdrByteBuffer != null) {
+                                int limit = hdrByteBuffer.limit();
+                                if (limit > 0) {
+                                    hdr10Info = new byte[limit];
+                                    hdrByteBuffer.get(hdr10Info);
+                                }
                             }
+                        } catch (Exception ignore) {
                         }
                     }
                     codec.releaseOutputBuffer(index, render);

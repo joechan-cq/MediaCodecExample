@@ -258,7 +258,9 @@ public class MediaCodecUtils {
                         }
 
                         int level = getDolbyVisionLevel(config.fps, Math.max(config.outWidth, config.outHeight));
-                        outputFormat.setInteger(MediaFormat.KEY_LEVEL, level);
+                        if (level > 0) {
+                            outputFormat.setInteger(MediaFormat.KEY_LEVEL, level);
+                        }
                     } else {
                         outputFormat.setFeatureEnabled("hdr-editing", true);
                         switch (colorTransfer) {
