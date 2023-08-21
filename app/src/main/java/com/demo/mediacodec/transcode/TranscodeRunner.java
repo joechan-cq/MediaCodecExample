@@ -303,6 +303,8 @@ public class TranscodeRunner {
             throw new NoSupportMediaCodecException("没有找到合适的编码器! outputFormat:" + mOutputFormat,
                         outputConfig.outputLevel);
         }
+        Log.i("TranscodeRunner", "使用编码器" +
+                ": " + codecName);
         mEncodeCodecThread = new HandlerThread("EncodeCodecThread");
         mEncodeCodecThread.start();
         mEncodeCodecHandler = new Handler(mEncodeCodecThread.getLooper());
@@ -391,9 +393,11 @@ public class TranscodeRunner {
     private void prepareDecoder(VideoOutputConfig outputConfig) throws Exception {
         decodeFrameIndex = 0;
         encodeFrameIndex = 0;
+        boolean isDolby = MediaFormat.MIMETYPE_VIDEO_DOLBY_VISION.equals(mOriVideoMime);
+        boolean useDolbyDec = false;
         String codecName = MediaCodecUtils.findDecoderByFormat(mOriVideoFormat);
         if (TextUtils.isEmpty(codecName)) {
-            if (MediaFormat.MIMETYPE_VIDEO_DOLBY_VISION.equals(mOriVideoMime)) {
+            if (isDolby) {
                 //如果是杜比视界，那么尝试用HEVC的解码器去解
                 mOriVideoFormat.setString(MediaFormat.KEY_MIME, MediaFormat.MIMETYPE_VIDEO_HEVC);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -421,10 +425,15 @@ public class TranscodeRunner {
             } else {
                 throw new RuntimeException("没有找到合适的解码器! videoFormat:" + mOriVideoFormat);
             }
+        } else {
+            if (isDolby) {
+                useDolbyDec = true;
+            }
         }
         if (TextUtils.isEmpty(codecName)) {
             throw new RuntimeException("没有找到合适的解码器! videoFormat:" + mOriVideoFormat);
         }
+        Log.i("TranscodeRunner", "使用解码器: " + codecName);
         mDecodeCodecThread = new HandlerThread("DecodeCodecThread");
         mDecodeCodecThread.start();
         mDecodeCodecHandler = new Handler(mDecodeCodecThread.getLooper());
@@ -576,6 +585,12 @@ public class TranscodeRunner {
         mDecoderOutputSurface = new OutputSurface(outputConfig);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             mOriVideoFormat.setInteger("allow-frame-drop", 0);
+        }
+        if (isDolby && useDolbyDec) {
+            Bundle transferBundle = new Bundle();
+            String value = "transfer.hlg"; //还有一种是"transfer.dolby"
+            transferBundle.putString("vendor.dolby.codec.transfer.value", value);
+            mDecoder.setParameters(transferBundle);
         }
         mDecoder.configure(mOriVideoFormat, mDecoderOutputSurface.getSurface(), null, 0);
     }
