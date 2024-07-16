@@ -200,7 +200,7 @@ public class TranscodeRunner {
             try {
                 mDecoder.release();
             } catch (Exception e) {
-                Log.w("TranscodeRunner", "reset: ", e);
+                Log.w("TranscodeRunner", "release Decoder: ", e);
             }
             mDecoder = null;
         }
@@ -213,9 +213,13 @@ public class TranscodeRunner {
         if (mEncoder != null) {
             try {
                 mEncoder.stop();
+            } catch (Exception e) {
+                Log.w("TranscodeRunner", "stop Encoder: ", e);
+            }
+            try {
                 mEncoder.release();
             } catch (Exception e) {
-                Log.w("TranscodeRunner", "reset: ", e);
+                Log.w("TranscodeRunner", "release Encoder: ", e);
             }
             mEncoder = null;
         }
@@ -228,9 +232,13 @@ public class TranscodeRunner {
         if (mMuxer != null) {
             try {
                 mMuxer.stop();
+            } catch (Exception e) {
+                Log.w("TranscodeRunner", "stop Muxer: ", e);
+            }
+            try {
                 mMuxer.release();
             } catch (Exception e) {
-                Log.w("TranscodeRunner", "reset: ", e);
+                Log.w("TranscodeRunner", "release Muxer: ", e);
             }
             mMuxer = null;
         }
@@ -301,7 +309,7 @@ public class TranscodeRunner {
         }
         if (TextUtils.isEmpty(codecName)) {
             throw new NoSupportMediaCodecException("没有找到合适的编码器! outputFormat:" + mOutputFormat,
-                        outputConfig.outputLevel);
+                    outputConfig.outputLevel);
         }
         Log.i("TranscodeRunner", "使用编码器" +
                 ": " + codecName);
@@ -416,9 +424,11 @@ public class TranscodeRunner {
 
                 if (TextUtils.isEmpty(codecName)) {
                     if (mMaybeSwitchWH) {
-                        //Oppo有某些设备，竖屏拍摄的视频，不写rotation到metadata中，而是直接交换宽高（一般竖屏视频是1920x1080+90度，而这些特殊视频是1080x1920+0），
+                        //Oppo有某些设备，竖屏拍摄的视频，不写rotation到metadata中，而是直接交换宽高（一般竖屏视频是1920x1080+90
+                        // 度，而这些特殊视频是1080x1920+0），
                         //导致这里因为解码器的宽高限制，无法获取到解码器.
-                        MediaFormat simpleFormat = MediaFormat.createVideoFormat(mOriVideoMime, mOriVideoHeight, mOriVideoWidth);
+                        MediaFormat simpleFormat = MediaFormat.createVideoFormat(mOriVideoMime,
+                                mOriVideoHeight, mOriVideoWidth);
                         codecName = MediaCodecUtils.findDecoderByFormat(simpleFormat);
                     }
                 }
@@ -506,7 +516,8 @@ public class TranscodeRunner {
                     if (outputConfig.isHDR && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                         try {
                             MediaFormat format = codec.getOutputFormat();
-                            ByteBuffer hdrByteBuffer = format.getByteBuffer(MediaFormat.KEY_HDR10_PLUS_INFO);
+                            ByteBuffer hdrByteBuffer =
+                                    format.getByteBuffer(MediaFormat.KEY_HDR10_PLUS_INFO);
                             if (hdrByteBuffer != null) {
                                 int limit = hdrByteBuffer.limit();
                                 if (limit > 0) {
